@@ -66,6 +66,21 @@ async function main() {
     },
   });
 
+  await prisma.appSetting.upsert({
+    where: { scope: "GLOBAL" },
+    update: {
+      depotName: "Gandhinagar Depot City",
+      currency: "INR",
+      distanceUnit: "kilometers",
+    },
+    create: {
+      scope: "GLOBAL",
+      depotName: "Gandhinagar Depot City",
+      currency: "INR",
+      distanceUnit: "kilometers",
+    },
+  });
+
   console.log("Seed complete:", {
     roles: roles.map((role) => role.name),
     superAdmin: { email, password },

@@ -62,9 +62,8 @@ export async function handleMe(request: Request) {
   return setNoStoreHeaders(response);
 }
 
-export async function handleLogout(request: Request) {
+export async function handleLogout() {
   const requestId = createRequestId();
-  await authorizeRoles(request, ALL_ROLES);
   const response = NextResponse.json(
     buildSuccessResponse({
       message: "Logout successful",

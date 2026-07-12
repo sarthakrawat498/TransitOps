@@ -207,3 +207,15 @@ model Expense {
   @@index([expenseDate])
   @@map("expenses")
 }
+
+model AppSetting {
+  id           String   @id @default(uuid()) @db.Uuid
+  scope        String   @unique @default("GLOBAL")
+  depotName    String   @map("depot_name")
+  currency     String   @default("INR")
+  distanceUnit String   @default("kilometers") @map("distance_unit")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
