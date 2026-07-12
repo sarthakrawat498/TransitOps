@@ -5,27 +5,39 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Bus,
+  ChevronDown,
   Fuel,
   LayoutDashboard,
+  LogOut,
   Menu,
   Search,
   Settings,
   ShieldCheck,
   Truck,
+  User,
   UserRound,
   UsersRound,
   Wrench,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { useLogout } from "@/features/auth/hooks/use-logout";
 import { useAuth } from "@/providers/auth-provider";
 import { cn } from "@/lib/utils";
 
 const navigationItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Fleet", href: "#fleet", icon: Truck },
-  { label: "Drivers", href: "#drivers", icon: UsersRound },
+  { label: "Fleet", href: "/fleet", icon: Truck },
+  { label: "Drivers", href: "/drivers", icon: UsersRound },
   { label: "Trips", href: "#trips", icon: Bus },
   { label: "Maintenance", href: "/maintenance", icon: Wrench },
   { label: "Fuel & Expenses", href: "/fuel-expenses", icon: Fuel },
@@ -46,8 +58,14 @@ function getInitials(name: string) {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { mutate: logout, isPending: isLoggingOut } = useLogout();
   const displayName = user?.fullName ?? "Raven K.";
   const roleLabel = user?.role.name.replaceAll("_", " ") ?? "Dispatcher";
+  const userEmail = user?.email ?? "user@transitops.dev";
+
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
@@ -63,9 +81,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <nav className="space-y-1" aria-label="Dashboard navigation">
             {navigationItems.map((item) => {
               const Icon = item.icon;
-              const isActive = item.href.startsWith("/")
-                ? pathname === item.href || pathname.startsWith(`${item.href}/`)
-                : false;
+              const isActive =
+                (item.href === "/dashboard" && pathname === "/dashboard") ||
+                (item.href !== "/dashboard" &&
+                  item.href !== "#" &&
+                  !item.href.startsWith("#") &&
+                  pathname.startsWith(item.href));
 
               return (
                 <Link
@@ -105,19 +126,54 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 />
               </div>
 
-              <div className="ml-auto flex items-center gap-3">
-                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-medium leading-none">{displayName}</p>
-                  <Badge
-                    variant="outline"
-                    className="mt-1 border-sky-500/50 bg-sky-500/10 text-[10px] font-semibold uppercase tracking-wide text-sky-200"
-                  >
-                    {roleLabel}
-                  </Badge>
-                </div>
-                <div className="flex size-9 items-center justify-center rounded-full border border-sky-500/40 bg-sky-500/15 text-xs font-semibold text-sky-100">
-                  {user ? getInitials(displayName) : <UserRound className="size-4" />}
-                </div>
+              {/* User dropdown menu */}
+              <div className="ml-auto">
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5">
+                    <div className="hidden text-right sm:block">
+                      <p className="text-sm font-medium leading-none">{displayName}</p>
+                      <Badge
+                        variant="outline"
+                        className="mt-1 border-sky-500/50 bg-sky-500/10 text-[10px] font-semibold uppercase tracking-wide text-sky-200"
+                      >
+                        {roleLabel}
+                      </Badge>
+                    </div>
+                    <div className="flex size-9 items-center justify-center rounded-full border border-sky-500/40 bg-sky-500/15 text-xs font-semibold text-sky-100">
+                      {user ? getInitials(displayName) : <UserRound className="size-4" />}
+                    </div>
+                    <ChevronDown className="hidden size-4 text-zinc-400 sm:block" />
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent className="w-56">
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{displayName}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {userEmail}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="gap-2">
+                      <User className="size-4" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="gap-2">
+                      <Settings className="size-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-400"
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
+                    >
+                      <LogOut className="size-4" />
+                      <span>{isLoggingOut ? "Signing out..." : "Sign out"}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </header>
