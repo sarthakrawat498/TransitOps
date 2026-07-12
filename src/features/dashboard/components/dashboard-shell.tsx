@@ -27,8 +27,8 @@ const navigationItems = [
   { label: "Fleet", href: "#fleet", icon: Truck },
   { label: "Drivers", href: "#drivers", icon: UsersRound },
   { label: "Trips", href: "#trips", icon: Bus },
-  { label: "Maintenance", href: "#maintenance", icon: Wrench },
-  { label: "Fuel & Expenses", href: "#fuel-expenses", icon: Fuel },
+  { label: "Maintenance", href: "/maintenance", icon: Wrench },
+  { label: "Fuel & Expenses", href: "/fuel-expenses", icon: Fuel },
   { label: "Analytics", href: "#analytics", icon: BarChart3 },
   { label: "Settings", href: "#settings", icon: Settings },
 ];
@@ -63,7 +63,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <nav className="space-y-1" aria-label="Dashboard navigation">
             {navigationItems.map((item) => {
               const Icon = item.icon;
-              const isActive = item.href === "/dashboard" && pathname === "/dashboard";
+              const isActive = item.href === pathname;
 
               return (
                 <Link
