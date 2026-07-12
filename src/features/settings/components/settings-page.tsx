@@ -1,10 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Check, Minus } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,7 +18,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSettings } from "@/features/settings/hooks/use-settings";
 import { useUpdateSettings } from "@/features/settings/hooks/use-update-settings";
 import { settingsUpdateSchema } from "@/features/settings/schemas";
@@ -33,16 +41,28 @@ function roleLabel(value: string): string {
     .join(" ");
 }
 
-function accessLabel(value: SettingsAccessLevel): string {
-  if (value === "manage") {
-    return "✓";
+function AccessCell({ level }: { level: SettingsAccessLevel }) {
+  if (level === "manage") {
+    return (
+      <Badge variant="secondary" className="gap-1 font-normal">
+        <Check className="size-3" /> Manage
+      </Badge>
+    );
   }
 
-  if (value === "view") {
-    return "view";
+  if (level === "view") {
+    return (
+      <Badge variant="outline" className="font-normal text-muted-foreground">
+        View
+      </Badge>
+    );
   }
 
-  return "-";
+  return (
+    <span className="inline-flex items-center gap-1 text-muted-foreground">
+      <Minus className="size-3" />
+    </span>
+  );
 }
 
 export function SettingsPage() {
@@ -84,39 +104,51 @@ export function SettingsPage() {
 
   if (isError) {
     return (
-      <div className="mx-auto w-full max-w-7xl rounded-xl border border-white/10 bg-card/60 p-6">
-        <h1 className="text-lg font-semibold">Settings unavailable</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Unable to load settings right now. Please retry.
-        </p>
-        <Button className="mt-4" onClick={() => void refetch()}>
-          Retry
-        </Button>
+      <div className="mx-auto w-full max-w-6xl">
+        <Card>
+          <CardHeader>
+            <CardTitle>Settings unavailable</CardTitle>
+            <CardDescription>Unable to load settings right now. Please retry.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" onClick={() => void refetch()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-      <h1 className="sr-only">Settings and RBAC</h1>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage operational defaults and review role-based access.
+        </p>
+      </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <Card className="border border-white/10 bg-card/60">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <Card>
           <CardHeader>
             <CardTitle>General</CardTitle>
             <CardDescription>Depot identity and unit configuration.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form className="space-y-4" onSubmit={onSubmit} noValidate>
+              <form className="space-y-5" onSubmit={onSubmit} noValidate>
                 <FormField
                   control={form.control}
                   name="depotName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Depot Name</FormLabel>
+                      <FormLabel>Depot name</FormLabel>
                       <FormControl>
-                        <Input {...field} disabled={!canEdit || isLoading || updateMutation.isPending} />
+                        <Input
+                          {...field}
+                          disabled={!canEdit || isLoading || updateMutation.isPending}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -155,7 +187,7 @@ export function SettingsPage() {
                   name="distanceUnit"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Distance Unit</FormLabel>
+                      <FormLabel>Distance unit</FormLabel>
                       <Select
                         disabled={!canEdit || isLoading || updateMutation.isPending}
                         onValueChange={field.onChange}
@@ -176,54 +208,76 @@ export function SettingsPage() {
                   )}
                 />
 
-                <Button type="submit" disabled={!canEdit || isLoading || updateMutation.isPending}>
-                  {updateMutation.isPending ? "Saving..." : "Save changes"}
-                </Button>
-
-                {!canEdit ? (
-                  <p className="text-xs text-muted-foreground">
-                    You can view settings, but only Fleet Manager and Super Admin can edit them.
-                  </p>
-                ) : null}
+                <div className="flex items-center gap-3 pt-1">
+                  <Button
+                    type="submit"
+                    disabled={!canEdit || isLoading || updateMutation.isPending}
+                  >
+                    {updateMutation.isPending ? "Saving..." : "Save changes"}
+                  </Button>
+                  {!canEdit ? (
+                    <p className="text-xs text-muted-foreground">
+                      View-only. Only Fleet Manager and Super Admin can edit.
+                    </p>
+                  ) : null}
+                </div>
               </form>
             </Form>
           </CardContent>
         </Card>
 
-        <Card className="border border-white/10 bg-card/60">
+        <Card>
           <CardHeader>
-            <CardTitle>Role-Based Access Control (RBAC)</CardTitle>
+            <CardTitle>Role-based access control</CardTitle>
             <CardDescription>Reference access matrix for functional modules.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[620px] text-sm">
+              <table className="w-full min-w-[720px] text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="px-2 py-2">Role</th>
-                    <th className="px-2 py-2">Fleet</th>
-                    <th className="px-2 py-2">Drivers</th>
-                    <th className="px-2 py-2">Trips</th>
-                    <th className="px-2 py-2">Fuel/Exp</th>
-                    <th className="px-2 py-2">Analytics</th>
+                  <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">Role</th>
+                    <th className="px-3 py-2 font-medium">Fleet</th>
+                    <th className="px-3 py-2 font-medium">Drivers</th>
+                    <th className="px-3 py-2 font-medium">Trips</th>
+                    <th className="px-3 py-2 font-medium">Maintenance</th>
+                    <th className="px-3 py-2 font-medium">Fuel/Exp</th>
+                    <th className="px-3 py-2 font-medium">Analytics</th>
+                    <th className="px-3 py-2 font-medium">Settings</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading || !data?.accessMatrix ? (
                     <tr>
-                      <td colSpan={6} className="px-2 py-6 text-center text-muted-foreground">
-                        Loading RBAC matrix...
+                      <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
+                        Loading matrix...
                       </td>
                     </tr>
                   ) : (
                     data.accessMatrix.map((item) => (
-                      <tr key={item.role} className="border-b border-white/5 last:border-0">
-                        <td className="px-2 py-2 font-medium">{roleLabel(item.role)}</td>
-                        <td className="px-2 py-2">{accessLabel(item.fleet)}</td>
-                        <td className="px-2 py-2">{accessLabel(item.drivers)}</td>
-                        <td className="px-2 py-2">{accessLabel(item.trips)}</td>
-                        <td className="px-2 py-2">{accessLabel(item.fuelAndExpenses)}</td>
-                        <td className="px-2 py-2">{accessLabel(item.analytics)}</td>
+                      <tr key={item.role} className="border-b last:border-0">
+                        <td className="px-3 py-3 font-medium">{roleLabel(item.role)}</td>
+                        <td className="px-3 py-3">
+                          <AccessCell level={item.fleet} />
+                        </td>
+                        <td className="px-3 py-3">
+                          <AccessCell level={item.drivers} />
+                        </td>
+                        <td className="px-3 py-3">
+                          <AccessCell level={item.trips} />
+                        </td>
+                        <td className="px-3 py-3">
+                          <AccessCell level={item.maintenance} />
+                        </td>
+                        <td className="px-3 py-3">
+                          <AccessCell level={item.fuelAndExpenses} />
+                        </td>
+                        <td className="px-3 py-3">
+                          <AccessCell level={item.analytics} />
+                        </td>
+                        <td className="px-3 py-3">
+                          <AccessCell level={item.settings} />
+                        </td>
                       </tr>
                     ))
                   )}

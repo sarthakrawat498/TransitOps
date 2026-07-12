@@ -1,9 +1,15 @@
 import { RoleName } from "@/generated/prisma/enums";
 import { ForbiddenError } from "@/server/shared/errors/app-error";
 import { verifyAuth } from "@/server/shared/middleware/auth-guard";
+import {
+  ALL_ROLES,
+  getReadRoles,
+  getWriteRoles,
+  type ModuleKey,
+} from "@/server/shared/rbac/permissions";
 import type { AuthSessionUser } from "@/types";
 
-export const ALL_ROLES: readonly RoleName[] = Object.values(RoleName);
+export { ALL_ROLES };
 
 export async function authorizeRoles(
   request: Request,
@@ -16,4 +22,18 @@ export async function authorizeRoles(
   }
 
   return authUser;
+}
+
+export async function authorizeRead(
+  request: Request,
+  module: ModuleKey,
+): Promise<AuthSessionUser> {
+  return authorizeRoles(request, getReadRoles(module));
+}
+
+export async function authorizeWrite(
+  request: Request,
+  module: ModuleKey,
+): Promise<AuthSessionUser> {
+  return authorizeRoles(request, getWriteRoles(module));
 }

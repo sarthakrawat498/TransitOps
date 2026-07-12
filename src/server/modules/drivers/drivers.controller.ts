@@ -6,6 +6,7 @@ import {
   updateDriverSchema,
   listDriversSchema,
 } from "./drivers.validators";
+import { authorizeRead, authorizeWrite } from "@/server/shared/middleware/rbac";
 import {
   buildSuccessResponse,
   createRequestId,
@@ -13,6 +14,7 @@ import {
 
 export async function handleListDrivers(request: Request) {
   const requestId = createRequestId();
+  await authorizeRead(request, "drivers");
   const { searchParams } = new URL(request.url);
 
   const input = listDriversSchema.parse({
@@ -28,12 +30,16 @@ export async function handleListDrivers(request: Request) {
       message: "Drivers fetched successfully",
       data: result,
       requestId,
-    })
+    }),
   );
 }
 
-export async function handleGetDriver(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function handleGetDriver(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const requestId = createRequestId();
+  await authorizeRead(request, "drivers");
   const { id } = await context.params;
 
   const driver = await driversService.getDriver(id);
@@ -43,12 +49,13 @@ export async function handleGetDriver(request: Request, context: { params: Promi
       message: "Driver fetched successfully",
       data: { driver },
       requestId,
-    })
+    }),
   );
 }
 
 export async function handleCreateDriver(request: Request) {
   const requestId = createRequestId();
+  await authorizeWrite(request, "drivers");
   const body = await request.json();
   const input = createDriverSchema.parse(body);
 
@@ -60,12 +67,16 @@ export async function handleCreateDriver(request: Request) {
       data: { driver },
       requestId,
     }),
-    { status: 201 }
+    { status: 201 },
   );
 }
 
-export async function handleUpdateDriver(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function handleUpdateDriver(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const requestId = createRequestId();
+  await authorizeWrite(request, "drivers");
   const { id } = await context.params;
   const body = await request.json();
   const input = updateDriverSchema.parse(body);
@@ -77,12 +88,16 @@ export async function handleUpdateDriver(request: Request, context: { params: Pr
       message: "Driver updated successfully",
       data: { driver },
       requestId,
-    })
+    }),
   );
 }
 
-export async function handleDeleteDriver(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function handleDeleteDriver(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const requestId = createRequestId();
+  await authorizeWrite(request, "drivers");
   const { id } = await context.params;
 
   await driversService.deleteDriver(id);
@@ -91,12 +106,13 @@ export async function handleDeleteDriver(request: Request, context: { params: Pr
     buildSuccessResponse({
       message: "Driver deleted successfully",
       requestId,
-    })
+    }),
   );
 }
 
-export async function handleGetAvailableDrivers() {
+export async function handleGetAvailableDrivers(request: Request) {
   const requestId = createRequestId();
+  await authorizeRead(request, "drivers");
 
   const drivers = await driversService.getAvailableDrivers();
 
@@ -105,6 +121,6 @@ export async function handleGetAvailableDrivers() {
       message: "Available drivers fetched successfully",
       data: { drivers },
       requestId,
-    })
+    }),
   );
 }

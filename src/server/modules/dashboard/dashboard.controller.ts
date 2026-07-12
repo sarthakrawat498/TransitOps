@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import * as dashboardService from "@/server/modules/dashboard/dashboard.service";
 import { dashboardOverviewQuerySchema } from "@/server/modules/dashboard/dashboard.validators";
-import { verifyAuth } from "@/server/shared/middleware/auth-guard";
+import { authorizeRead } from "@/server/shared/middleware/rbac";
 import { buildSuccessResponse, createRequestId } from "@/server/shared/responses/response-builder";
 
 function getSearchParam(request: Request, key: string): string | undefined {
@@ -11,7 +11,7 @@ function getSearchParam(request: Request, key: string): string | undefined {
 
 export async function handleGetDashboardOverview(request: Request) {
   const requestId = createRequestId();
-  await verifyAuth(request);
+  await authorizeRead(request, "dashboard");
 
   const filters = dashboardOverviewQuerySchema.parse({
     vehicleType: getSearchParam(request, "vehicleType"),
@@ -33,7 +33,7 @@ export async function handleGetDashboardOverview(request: Request) {
 
 export async function handleGetDashboardFilters(request: Request) {
   const requestId = createRequestId();
-  await verifyAuth(request);
+  await authorizeRead(request, "dashboard");
 
   const filters = await dashboardService.getFilters();
 

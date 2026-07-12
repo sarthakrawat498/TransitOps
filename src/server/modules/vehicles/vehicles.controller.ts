@@ -6,6 +6,7 @@ import {
   updateVehicleSchema,
   listVehiclesSchema,
 } from "./vehicles.validators";
+import { authorizeRead, authorizeWrite } from "@/server/shared/middleware/rbac";
 import {
   buildSuccessResponse,
   createRequestId,
@@ -13,6 +14,7 @@ import {
 
 export async function handleListVehicles(request: Request) {
   const requestId = createRequestId();
+  await authorizeRead(request, "fleet");
   const { searchParams } = new URL(request.url);
 
   const input = listVehiclesSchema.parse({
@@ -30,12 +32,16 @@ export async function handleListVehicles(request: Request) {
       message: "Vehicles fetched successfully",
       data: result,
       requestId,
-    })
+    }),
   );
 }
 
-export async function handleGetVehicle(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function handleGetVehicle(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const requestId = createRequestId();
+  await authorizeRead(request, "fleet");
   const { id } = await context.params;
 
   const vehicle = await vehiclesService.getVehicle(id);
@@ -45,12 +51,13 @@ export async function handleGetVehicle(request: Request, context: { params: Prom
       message: "Vehicle fetched successfully",
       data: { vehicle },
       requestId,
-    })
+    }),
   );
 }
 
 export async function handleCreateVehicle(request: Request) {
   const requestId = createRequestId();
+  await authorizeWrite(request, "fleet");
   const body = await request.json();
   const input = createVehicleSchema.parse(body);
 
@@ -62,12 +69,16 @@ export async function handleCreateVehicle(request: Request) {
       data: { vehicle },
       requestId,
     }),
-    { status: 201 }
+    { status: 201 },
   );
 }
 
-export async function handleUpdateVehicle(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function handleUpdateVehicle(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const requestId = createRequestId();
+  await authorizeWrite(request, "fleet");
   const { id } = await context.params;
   const body = await request.json();
   const input = updateVehicleSchema.parse(body);
@@ -79,12 +90,16 @@ export async function handleUpdateVehicle(request: Request, context: { params: P
       message: "Vehicle updated successfully",
       data: { vehicle },
       requestId,
-    })
+    }),
   );
 }
 
-export async function handleDeleteVehicle(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function handleDeleteVehicle(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const requestId = createRequestId();
+  await authorizeWrite(request, "fleet");
   const { id } = await context.params;
 
   await vehiclesService.deleteVehicle(id);
@@ -93,12 +108,13 @@ export async function handleDeleteVehicle(request: Request, context: { params: P
     buildSuccessResponse({
       message: "Vehicle deleted successfully",
       requestId,
-    })
+    }),
   );
 }
 
-export async function handleGetAvailableVehicles() {
+export async function handleGetAvailableVehicles(request: Request) {
   const requestId = createRequestId();
+  await authorizeRead(request, "fleet");
 
   const vehicles = await vehiclesService.getAvailableVehicles();
 
@@ -107,6 +123,6 @@ export async function handleGetAvailableVehicles() {
       message: "Available vehicles fetched successfully",
       data: { vehicles },
       requestId,
-    })
+    }),
   );
 }

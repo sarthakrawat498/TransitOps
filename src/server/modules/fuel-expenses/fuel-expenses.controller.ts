@@ -5,7 +5,7 @@ import {
   createExpenseSchema,
   createFuelLogSchema,
 } from "@/server/modules/fuel-expenses/fuel-expenses.validators";
-import { ALL_ROLES, authorizeRoles } from "@/server/shared/middleware/rbac";
+import { authorizeRead, authorizeWrite } from "@/server/shared/middleware/rbac";
 import { buildSuccessResponse, createRequestId } from "@/server/shared/responses/response-builder";
 
 function setNoStoreHeaders(response: NextResponse): NextResponse {
@@ -17,7 +17,7 @@ function setNoStoreHeaders(response: NextResponse): NextResponse {
 
 export async function handleGetFuelExpenses(request: Request) {
   const requestId = createRequestId();
-  await authorizeRoles(request, ALL_ROLES);
+  await authorizeRead(request, "fuelAndExpenses");
 
   const overview = await fuelExpensesService.getOverview();
   const response = NextResponse.json(
@@ -33,7 +33,7 @@ export async function handleGetFuelExpenses(request: Request) {
 
 export async function handleCreateFuelLog(request: Request) {
   const requestId = createRequestId();
-  await authorizeRoles(request, ALL_ROLES);
+  await authorizeWrite(request, "fuelAndExpenses");
 
   const body = await request.json();
   const input = createFuelLogSchema.parse(body);
@@ -53,7 +53,7 @@ export async function handleCreateFuelLog(request: Request) {
 
 export async function handleCreateExpense(request: Request) {
   const requestId = createRequestId();
-  await authorizeRoles(request, ALL_ROLES);
+  await authorizeWrite(request, "fuelAndExpenses");
 
   const body = await request.json();
   const input = createExpenseSchema.parse(body);

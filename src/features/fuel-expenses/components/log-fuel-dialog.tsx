@@ -14,7 +14,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FuelExpensesFormField } from "@/features/fuel-expenses/components/fuel-expenses-form-field";
 import { getFuelExpensesFormError } from "@/features/fuel-expenses/components/form-errors";
 import { useCreateFuelLog } from "@/features/fuel-expenses/hooks/use-create-fuel-log";
@@ -57,8 +63,6 @@ export function LogFuelDialog({ vehicles, trips }: LogFuelDialogProps) {
   const createFuelLogMutation = useCreateFuelLog();
 
   const vehicleTrips = trips.filter((trip) => trip.vehicleId === formValues.vehicleId);
-  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === formValues.vehicleId);
-  const selectedTrip = vehicleTrips.find((trip) => trip.id === formValues.tripId);
 
   const handleChange = (key: keyof FuelLogFormValues, value: string) => {
     setFormValues((currentValues) => ({
@@ -95,20 +99,19 @@ export function LogFuelDialog({ vehicles, trips }: LogFuelDialogProps) {
     <>
       <Button
         type="button"
-        className="min-w-28 bg-orange-500 text-orange-950 hover:bg-orange-400"
         onClick={() => {
           setFormValues(defaultValues);
           setOpen(true);
         }}
       >
-        <Plus className="size-4" />
-        Log Fuel
+        <Plus className="mr-1 size-4" />
+        Log fuel
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="border border-white/10 bg-[#151515] text-foreground sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Log Fuel</DialogTitle>
+            <DialogTitle>Log fuel</DialogTitle>
             <DialogDescription>
               Add a fuel entry for a vehicle and optionally link it to a trip.
             </DialogDescription>
@@ -124,12 +127,8 @@ export function LogFuelDialog({ vehicles, trips }: LogFuelDialogProps) {
                   }
                 }}
               >
-                <SelectTrigger className="h-10 w-full border-white/30 bg-white/10 text-foreground">
-                  <span className={selectedVehicle ? undefined : "text-muted-foreground"}>
-                    {selectedVehicle
-                      ? `${selectedVehicle.registrationNumber} - ${selectedVehicle.model}`
-                      : "Select vehicle"}
-                  </span>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select vehicle" />
                 </SelectTrigger>
                 <SelectContent>
                   {vehicles.map((vehicle) => (
@@ -150,18 +149,8 @@ export function LogFuelDialog({ vehicles, trips }: LogFuelDialogProps) {
                   }
                 }}
               >
-                <SelectTrigger className="h-10 w-full border-white/30 bg-white/10 text-foreground">
-                  <span
-                    className={
-                      formValues.tripId === "none" || selectedTrip
-                        ? undefined
-                        : "text-muted-foreground"
-                    }
-                  >
-                    {formValues.tripId === "none"
-                      ? "No linked trip"
-                      : (selectedTrip?.label ?? "Select trip")}
-                  </span>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select trip" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No linked trip</SelectItem>
@@ -182,7 +171,6 @@ export function LogFuelDialog({ vehicles, trips }: LogFuelDialogProps) {
                   step="0.01"
                   type="number"
                   value={formValues.liters}
-                  className="h-10 border-white/30 bg-white/10 text-foreground"
                   onChange={(event) => handleChange("liters", event.target.value)}
                 />
               </FuelExpensesFormField>
@@ -194,7 +182,6 @@ export function LogFuelDialog({ vehicles, trips }: LogFuelDialogProps) {
                   step="0.01"
                   type="number"
                   value={formValues.cost}
-                  className="h-10 border-white/30 bg-white/10 text-foreground"
                   onChange={(event) => handleChange("cost", event.target.value)}
                 />
               </FuelExpensesFormField>
@@ -204,7 +191,6 @@ export function LogFuelDialog({ vehicles, trips }: LogFuelDialogProps) {
                   required
                   type="date"
                   value={formValues.logDate}
-                  className="h-10 border-white/30 bg-white/10 text-foreground"
                   onChange={(event) => handleChange("logDate", event.target.value)}
                 />
               </FuelExpensesFormField>
@@ -215,7 +201,7 @@ export function LogFuelDialog({ vehicles, trips }: LogFuelDialogProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={createFuelLogMutation.isPending}>
-                {createFuelLogMutation.isPending ? "Saving..." : "Save Fuel Log"}
+                {createFuelLogMutation.isPending ? "Saving..." : "Save fuel log"}
               </Button>
             </DialogFooter>
           </form>

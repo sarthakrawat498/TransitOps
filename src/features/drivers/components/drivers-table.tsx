@@ -27,6 +27,7 @@ import {
 import { useDrivers } from "@/features/drivers/hooks/use-drivers";
 import { useDeleteDriver } from "@/features/drivers/hooks/use-delete-driver";
 import type { Driver } from "@/features/drivers/services/drivers.service";
+import { matchesAnySearch, useSearch } from "@/providers/search-provider";
 import { DriverFormDialog } from "./driver-form-dialog";
 import { DeleteDriverDialog } from "./delete-driver-dialog";
 
@@ -77,6 +78,7 @@ export function DriversTable() {
     limit: 20,
   });
 
+  const { query } = useSearch();
   const deleteMutation = useDeleteDriver();
 
   const handleDelete = async () => {
@@ -107,7 +109,18 @@ export function DriversTable() {
     );
   }
 
-  const drivers = data?.data?.drivers ?? [];
+  const drivers = (data?.data?.drivers ?? []).filter((driver) =>
+    matchesAnySearch(
+      [
+        driver.fullName,
+        driver.licenseNumber,
+        driver.licenseCategory,
+        driver.contactNumber,
+        driver.status,
+      ],
+      query,
+    ),
+  );
   const meta = data?.data?.meta;
 
   return (

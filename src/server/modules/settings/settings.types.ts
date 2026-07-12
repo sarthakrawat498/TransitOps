@@ -13,8 +13,10 @@ export interface SettingsAccessMatrixItem {
   fleet: SettingsAccessLevel;
   drivers: SettingsAccessLevel;
   trips: SettingsAccessLevel;
+  maintenance: SettingsAccessLevel;
   fuelAndExpenses: SettingsAccessLevel;
   analytics: SettingsAccessLevel;
+  settings: SettingsAccessLevel;
 }
 
 export interface SettingsPayload {

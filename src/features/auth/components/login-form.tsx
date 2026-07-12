@@ -6,11 +6,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -20,38 +20,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useLogin } from "@/features/auth/hooks/use-login";
-import { loginSchema } from "@/features/auth/schemas";
-
-const roleValues = [
-  "fleet-manager",
-  "dispatcher",
-  "safety-officer",
-  "financial-analyst",
-] as const;
-
-const roleOptions = [
-  { value: roleValues[0], label: "Fleet Manager" },
-  { value: roleValues[1], label: "Dispatcher" },
-  { value: roleValues[2], label: "Safety Officer" },
-  { value: roleValues[3], label: "Financial Analyst" },
-] as const;
-
-const loginFormSchema = loginSchema.extend({
-  role: z.enum(roleValues, {
-    message: "Please select a role",
-  }),
-  rememberMe: z.boolean(),
-});
-
-type LoginFormValues = z.infer<typeof loginFormSchema>;
+import { loginSchema, type LoginInput } from "@/features/auth/schemas";
 
 function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -70,23 +40,18 @@ export function LoginForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema),
+  const form = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
-      role: "dispatcher",
-      rememberMe: false,
     },
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      await mutateAsync({
-        email: values.email,
-        password: values.password,
-      });
+      await mutateAsync(values);
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       toast.success("Signed in successfully");
       router.push("/dashboard");
@@ -99,199 +64,101 @@ export function LoginForm() {
   });
 
   return (
-    <div className="relative z-10 w-full max-w-md animate-fade-in">
-      {/* Glassmorphism card */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl shadow-black/20 backdrop-blur-xl">
-        {/* Header */}
-        <div className="mb-8 space-y-2 text-center">
-          <h1 className="animate-slide-up stagger-1 text-3xl font-bold tracking-tight text-white">
-            Welcome back
-          </h1>
-          <p className="animate-slide-up stagger-2 text-sm text-zinc-400">
-            Sign in to access your dashboard
-          </p>
-        </div>
-
+    <Card className="w-full max-w-sm">
+      <CardHeader className="space-y-2">
+        <CardTitle className="text-2xl font-semibold">Sign in</CardTitle>
+        <CardDescription>Access your TransitOps dashboard</CardDescription>
+      </CardHeader>
+      <CardContent>
         <Form {...form}>
-          <form onSubmit={onSubmit} className="space-y-5" noValidate>
-            {/* Email field */}
-            <div className="animate-slide-up stagger-2">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-                      Email
-                    </FormLabel>
-                    <FormControl>
+          <form onSubmit={onSubmit} className="space-y-4" noValidate>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="email"
+                      autoComplete="email"
+                      placeholder="name@company.com"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
                       <Input
                         {...field}
-                        type="email"
-                        autoComplete="email"
-                        placeholder="you@transitops.in"
-                        className="h-12 border-white/10 bg-white/5 text-zinc-100 transition-all duration-200 placeholder:text-zinc-500 focus:border-orange-500/50 focus:bg-white/10 focus:ring-orange-500/20"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        placeholder="Enter your password"
+                        className="pr-10"
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        className="absolute inset-y-0 right-2 flex items-center text-muted-foreground transition-colors hover:text-foreground"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            {/* Password field with toggle */}
-            <div className="animate-slide-up stagger-3">
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-                      Password
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          type={showPassword ? "text" : "password"}
-                          autoComplete="current-password"
-                          placeholder="Enter your password"
-                          className="h-12 border-white/10 bg-white/5 pr-12 text-zinc-100 transition-all duration-200 placeholder:text-zinc-500 focus:border-orange-500/50 focus:bg-white/10 focus:ring-orange-500/20"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute top-1/2 right-4 -translate-y-1/2 text-zinc-500 transition-colors hover:text-zinc-300"
-                          tabIndex={-1}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="size-4" />
-                          ) : (
-                            <Eye className="size-4" />
-                          )}
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign in"
+              )}
+            </Button>
 
-            {/* Role field */}
-            <div className="animate-slide-up stagger-4">
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-                      Role (RBAC)
-                    </FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="h-12 w-full border-white/10 bg-white/5 text-zinc-100 transition-all duration-200 data-placeholder:text-zinc-500 hover:bg-white/10">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {roleOptions.map((role) => (
-                          <SelectItem key={role.value} value={role.value}>
-                            {role.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Remember me and forgot password */}
-            <div className="animate-slide-up stagger-4 flex items-center justify-between gap-4">
-              <FormField
-                control={form.control}
-                name="rememberMe"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center gap-2.5 space-y-0">
-                    <FormControl>
-                      <input
-                        ref={field.ref}
-                        type="checkbox"
-                        checked={field.value}
-                        onBlur={field.onBlur}
-                        onChange={(event) => field.onChange(event.target.checked)}
-                        className="size-4 rounded border-white/20 bg-white/5 accent-orange-500 transition-colors focus:ring-orange-500/20"
-                      />
-                    </FormControl>
-                    <FormLabel className="text-sm font-normal text-zinc-400">
-                      Remember me
-                    </FormLabel>
-                  </FormItem>
-                )}
-              />
-
-              <button
-                type="button"
-                className="text-sm text-zinc-400 transition-colors hover:text-orange-400"
-              >
-                Forgot password?
-              </button>
-            </div>
-
-            {/* Submit button */}
-            <div className="animate-slide-up stagger-5 pt-2">
-              <Button
-                type="submit"
-                className="h-12 w-full gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-sm font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-200 hover:from-orange-600 hover:to-amber-600 hover:shadow-orange-500/40 disabled:opacity-50"
-                disabled={isPending}
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="size-4" />
-                    Sign In
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Error message */}
-            {submitError && (
-              <div className="animate-fade-in rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-                <p className="font-medium">Authentication Failed</p>
-                <p className="mt-1 text-red-400/80">{submitError}</p>
+            {submitError ? (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                {submitError}
               </div>
-            )}
+            ) : null}
           </form>
         </Form>
 
-        {/* Demo credentials hint */}
-        <div className="mt-6 rounded-lg border border-white/5 bg-white/[0.02] p-4">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Demo Credentials
+        <div className="mt-6 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+          <p className="mb-1 font-medium text-foreground">Demo credentials</p>
+          <p>
+            <span className="text-muted-foreground">Email:</span>{" "}
+            <code className="rounded bg-background px-1.5 py-0.5 font-mono">
+              admin@transitops.dev
+            </code>
           </p>
-          <div className="space-y-1 text-xs text-zinc-400">
-            <p>
-              <span className="text-zinc-500">Email:</span>{" "}
-              <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-zinc-300">
-                fleet@transitops.dev
-              </code>
-            </p>
-            <p>
-              <span className="text-zinc-500">Password:</span>{" "}
-              <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-zinc-300">
-                demo123
-              </code>
-            </p>
-          </div>
+          <p>
+            <span className="text-muted-foreground">Password:</span>{" "}
+            <code className="rounded bg-background px-1.5 py-0.5 font-mono">password123</code>
+          </p>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
