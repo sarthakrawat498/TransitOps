@@ -1,11 +1,18 @@
 import "dotenv/config";
 
-import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcryptjs";
 import { Pool } from "pg";
+
 import { PrismaClient } from "../src/generated/prisma/client";
 
-// Create pg pool and Prisma client for seeding
+type RoleName = "SUPER_ADMIN" | "FLEET_MANAGER" | "DRIVER" | "SAFETY_OFFICER" | "FINANCIAL_ANALYST";
+type VehicleStatus = "AVAILABLE" | "ON_TRIP" | "IN_SHOP" | "RETIRED";
+type DriverStatus = "AVAILABLE" | "ON_TRIP" | "OFF_DUTY" | "SUSPENDED";
+type TripStatus = "DRAFT" | "DISPATCHED" | "COMPLETED" | "CANCELLED";
+type MaintenanceStatus = "OPEN" | "CLOSED";
+type ExpenseCategory = "TOLL" | "PERMIT" | "INSURANCE" | "FINE" | "PARKING" | "MAINTENANCE" | "OTHER";
+
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
   throw new Error("DATABASE_URL environment variable is not set");
@@ -14,17 +21,6 @@ if (!databaseUrl) {
 const pool = new Pool({ connectionString: databaseUrl });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
-
-// Type aliases from schema enums
-type RoleName = "SUPER_ADMIN" | "FLEET_MANAGER" | "DRIVER" | "SAFETY_OFFICER" | "FINANCIAL_ANALYST";
-type VehicleStatus = "AVAILABLE" | "ON_TRIP" | "IN_SHOP" | "RETIRED";
-type DriverStatus = "AVAILABLE" | "ON_TRIP" | "OFF_DUTY" | "SUSPENDED";
-type TripStatus = "DRAFT" | "DISPATCHED" | "COMPLETED" | "CANCELLED";
-type MaintenanceStatus = "OPEN" | "CLOSED";
-
-// ---------------------------------------------------------------------------
-// Seed Data Definitions
-// ---------------------------------------------------------------------------
 
 const roles: Array<{ name: RoleName; description: string }> = [
   {
@@ -81,9 +77,9 @@ const vehicles: Array<{
     model: "Ashok Leyland 4220",
     type: "Heavy Truck",
     maxLoadCapacity: 25000,
-    odometer: 89000,
+    odometer: 89156,
     acquisitionCost: 3200000,
-    status: "AVAILABLE", // Will be set after trip is completed
+    status: "AVAILABLE",
     region: "Karnataka",
   },
   {
@@ -123,7 +119,7 @@ const drivers: Array<{
     licenseExpiry: new Date("2026-11-30"),
     contactNumber: "+919876543211",
     safetyScore: 88,
-    status: "AVAILABLE", // Available after completed trip
+    status: "AVAILABLE",
   },
 ];
 
@@ -163,27 +159,31 @@ const maintenanceData: {
   startedAt: new Date("2026-07-11"),
 };
 
-const fuelLogData: {
-  liters: number;
-  cost: number;
-  logDate: Date;
-} = {
+const fuelLogData = {
   liters: 85,
   cost: 8925,
   logDate: new Date("2026-07-10"),
 };
 
-// ---------------------------------------------------------------------------
-// Main Seed Function
-// ---------------------------------------------------------------------------
+const expenseData: Array<{ category: ExpenseCategory; amount: number; expenseDate: Date; description: string }> = [
+  {
+    category: "TOLL",
+    amount: 2500,
+    expenseDate: new Date("2026-07-10"),
+    description: "Mumbai-Pune toll charges",
+  },
+  {
+    category: "MAINTENANCE",
+    amount: 28500,
+    expenseDate: new Date("2026-07-11"),
+    description: "Workshop maintenance charges",
+  },
+];
 
 async function main() {
-  console.log("🌱 Starting seed...\n");
+  console.log("Starting seed...");
 
-  // --- 1. Seed Roles ---
-  console.log("Creating roles...");
   const roleRecords = new Map<RoleName, string>();
-
   for (const role of roles) {
     const record = await prisma.role.upsert({
       where: { name: role.name },
@@ -193,17 +193,17 @@ async function main() {
     });
     roleRecords.set(record.name, record.id);
   }
-  console.log(`  ✓ ${roles.length} roles created\n`);
+  console.log(`Created or updated ${roles.length} roles.`);
 
-  // --- 2. Seed Super Admin ---
-  console.log("Creating super admin...");
   const adminEmail = process.env.SUPER_ADMIN_EMAIL ?? "admin@transitops.dev";
   const adminPassword = process.env.SUPER_ADMIN_PASSWORD ?? "password123";
   const adminFullName = process.env.SUPER_ADMIN_FULL_NAME ?? "TransitOps Super Admin";
   const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
 
   const superAdminRoleId = roleRecords.get("SUPER_ADMIN");
-  if (!superAdminRoleId) throw new Error("SUPER_ADMIN role not found");
+  if (!superAdminRoleId) {
+    throw new Error("SUPER_ADMIN role not found");
+  }
 
   await prisma.user.upsert({
     where: { email: adminEmail },
@@ -221,9 +221,8 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`  ✓ Super admin: ${adminEmail} / ${adminPassword}\n`);
+  console.log(`Created or updated super admin: ${adminEmail}`);
 
-  // --- 2.1 Seed App Settings ---
   await prisma.appSetting.upsert({
     where: { scope: "GLOBAL" },
     update: {
@@ -238,16 +237,17 @@ async function main() {
       distanceUnit: "kilometers",
     },
   });
+  console.log("Created or updated app settings.");
 
-  // --- 3. Seed Demo Users ---
-  console.log("Creating demo users...");
   const demoPassword = "demo123";
   const hashedDemoPassword = await bcrypt.hash(demoPassword, 10);
   const userRecords = new Map<string, string>();
 
   for (const user of demoUsers) {
     const roleId = roleRecords.get(user.role);
-    if (!roleId) throw new Error(`Role ${user.role} not found`);
+    if (!roleId) {
+      throw new Error(`Role ${user.role} not found`);
+    }
 
     const record = await prisma.user.upsert({
       where: { email: user.email },
@@ -266,14 +266,10 @@ async function main() {
       },
     });
     userRecords.set(user.email, record.id);
-    console.log(`  ✓ ${user.fullName} (${user.role}): ${user.email}`);
   }
-  console.log(`  → Password for all demo users: ${demoPassword}\n`);
+  console.log(`Created or updated ${demoUsers.length} demo users.`);
 
-  // --- 4. Seed Vehicles ---
-  console.log("Creating vehicles...");
   const vehicleRecords = new Map<string, string>();
-
   for (const vehicle of vehicles) {
     const record = await prisma.vehicle.upsert({
       where: { registrationNumber: vehicle.registrationNumber },
@@ -298,14 +294,10 @@ async function main() {
       },
     });
     vehicleRecords.set(vehicle.registrationNumber, record.id);
-    console.log(`  ✓ ${vehicle.registrationNumber} - ${vehicle.model} (${vehicle.status})`);
   }
-  console.log();
+  console.log(`Created or updated ${vehicles.length} vehicles.`);
 
-  // --- 5. Seed Drivers ---
-  console.log("Creating drivers...");
   const driverRecords = new Map<string, string>();
-
   for (const driver of drivers) {
     const record = await prisma.driver.upsert({
       where: { licenseNumber: driver.licenseNumber },
@@ -328,89 +320,160 @@ async function main() {
       },
     });
     driverRecords.set(driver.licenseNumber, record.id);
-    console.log(`  ✓ ${driver.fullName} - ${driver.licenseNumber} (${driver.status})`);
   }
-  console.log();
+  console.log(`Created or updated ${drivers.length} drivers.`);
 
-  // --- 6. Seed Completed Trip ---
-  console.log("Creating completed trip...");
   const tripVehicleId = vehicleRecords.get("KA01CD5678");
   const tripDriverId = driverRecords.get("KA0520200098765");
   const tripCreatorId = userRecords.get("dispatcher@transitops.dev");
-
   if (!tripVehicleId || !tripDriverId || !tripCreatorId) {
     throw new Error("Missing required records for trip creation");
   }
 
-  const trip = await prisma.trip.create({
-    data: {
+  const existingTrip = await prisma.trip.findFirst({
+    where: {
       vehicleId: tripVehicleId,
       driverId: tripDriverId,
-      createdById: tripCreatorId,
       source: tripData.source,
       destination: tripData.destination,
-      cargoWeight: tripData.cargoWeight,
-      plannedDistance: tripData.plannedDistance,
-      actualDistance: tripData.actualDistance,
-      revenue: tripData.revenue,
-      status: tripData.status,
-      finalOdometer: tripData.finalOdometer,
       dispatchedAt: tripData.dispatchedAt,
-      completedAt: tripData.completedAt,
     },
+    select: { id: true },
   });
-  console.log(`  ✓ Trip: ${tripData.source} → ${tripData.destination} (${tripData.status})\n`);
 
-  // --- 7. Seed Maintenance Log ---
-  console.log("Creating maintenance log...");
+  const tripPayload = {
+    vehicleId: tripVehicleId,
+    driverId: tripDriverId,
+    createdById: tripCreatorId,
+    source: tripData.source,
+    destination: tripData.destination,
+    cargoWeight: tripData.cargoWeight,
+    plannedDistance: tripData.plannedDistance,
+    actualDistance: tripData.actualDistance,
+    revenue: tripData.revenue,
+    status: tripData.status,
+    finalOdometer: tripData.finalOdometer,
+    dispatchedAt: tripData.dispatchedAt,
+    completedAt: tripData.completedAt,
+  };
+
+  const trip = existingTrip
+    ? await prisma.trip.update({
+        where: { id: existingTrip.id },
+        data: tripPayload,
+      })
+    : await prisma.trip.create({
+        data: tripPayload,
+      });
+  console.log("Created or updated completed demo trip.");
+
   const maintenanceVehicleId = vehicleRecords.get("TN09EF9012");
-
   if (!maintenanceVehicleId) {
     throw new Error("Missing vehicle for maintenance log");
   }
 
-  await prisma.maintenanceLog.create({
-    data: {
+  const existingMaintenance = await prisma.maintenanceLog.findFirst({
+    where: {
       vehicleId: maintenanceVehicleId,
       description: maintenanceData.description,
-      cost: maintenanceData.cost,
-      status: maintenanceData.status,
       startedAt: maintenanceData.startedAt,
     },
+    select: { id: true },
   });
-  console.log(
-    `  ✓ Maintenance: ${maintenanceData.description.substring(0, 40)}... (${maintenanceData.status})\n`,
-  );
 
-  // --- 8. Seed Fuel Log ---
-  console.log("Creating fuel log...");
-  await prisma.fuelLog.create({
-    data: {
+  const maintenancePayload = {
+    vehicleId: maintenanceVehicleId,
+    description: maintenanceData.description,
+    cost: maintenanceData.cost,
+    status: maintenanceData.status,
+    startedAt: maintenanceData.startedAt,
+  };
+
+  if (existingMaintenance) {
+    await prisma.maintenanceLog.update({
+      where: { id: existingMaintenance.id },
+      data: maintenancePayload,
+    });
+  } else {
+    await prisma.maintenanceLog.create({
+      data: maintenancePayload,
+    });
+  }
+  console.log("Created or updated maintenance log.");
+
+  const existingFuelLog = await prisma.fuelLog.findFirst({
+    where: {
       vehicleId: tripVehicleId,
       tripId: trip.id,
-      liters: fuelLogData.liters,
-      cost: fuelLogData.cost,
       logDate: fuelLogData.logDate,
     },
+    select: { id: true },
   });
-  console.log(`  ✓ Fuel: ${fuelLogData.liters}L @ ₹${fuelLogData.cost}\n`);
 
-  // --- Summary ---
-  console.log("═".repeat(50));
-  console.log("🎉 Seed complete!\n");
-  console.log("Demo Credentials:");
-  console.log("─".repeat(50));
-  console.log(`  Super Admin:      ${adminEmail} / ${adminPassword}`);
-  console.log(`  Fleet Manager:    fleet@transitops.dev / ${demoPassword}`);
-  console.log(`  Safety Officer:   safety@transitops.dev / ${demoPassword}`);
-  console.log(`  Financial Analyst: finance@transitops.dev / ${demoPassword}`);
-  console.log(`  Dispatcher:       dispatcher@transitops.dev / ${demoPassword}`);
-  console.log("═".repeat(50));
+  const fuelLogPayload = {
+    vehicleId: tripVehicleId,
+    tripId: trip.id,
+    liters: fuelLogData.liters,
+    cost: fuelLogData.cost,
+    logDate: fuelLogData.logDate,
+  };
+
+  if (existingFuelLog) {
+    await prisma.fuelLog.update({
+      where: { id: existingFuelLog.id },
+      data: fuelLogPayload,
+    });
+  } else {
+    await prisma.fuelLog.create({
+      data: fuelLogPayload,
+    });
+  }
+  console.log("Created or updated fuel log.");
+
+  for (const expense of expenseData) {
+    const existingExpense = await prisma.expense.findFirst({
+      where: {
+        vehicleId: tripVehicleId,
+        category: expense.category,
+        amount: expense.amount,
+        expenseDate: expense.expenseDate,
+      },
+      select: { id: true },
+    });
+
+    const expensePayload = {
+      vehicleId: tripVehicleId,
+      category: expense.category,
+      amount: expense.amount,
+      expenseDate: expense.expenseDate,
+      description: expense.description,
+    };
+
+    if (existingExpense) {
+      await prisma.expense.update({
+        where: { id: existingExpense.id },
+        data: expensePayload,
+      });
+    } else {
+      await prisma.expense.create({
+        data: expensePayload,
+      });
+    }
+  }
+  console.log(`Created or updated ${expenseData.length} expenses.`);
+
+  console.log("Seed complete.");
+  console.log("Demo credentials:");
+  console.log(`Super Admin: ${adminEmail} / ${adminPassword}`);
+  console.log(`Fleet Manager: fleet@transitops.dev / ${demoPassword}`);
+  console.log(`Safety Officer: safety@transitops.dev / ${demoPassword}`);
+  console.log(`Financial Analyst: finance@transitops.dev / ${demoPassword}`);
+  console.log(`Dispatcher: dispatcher@transitops.dev / ${demoPassword}`);
 }
 
 main()
   .catch((error) => {
-    console.error("❌ Seed failed:", error);
+    console.error("Seed failed:", error);
     process.exit(1);
   })
   .finally(async () => {
