@@ -211,6 +211,22 @@ async function main() {
   });
   console.log(`  ✓ Super admin: ${adminEmail} / ${adminPassword}\n`);
 
+  // --- 2.1 Seed App Settings ---
+  await prisma.appSetting.upsert({
+    where: { scope: "GLOBAL" },
+    update: {
+      depotName: "Gandhinagar Depot City",
+      currency: "INR",
+      distanceUnit: "kilometers",
+    },
+    create: {
+      scope: "GLOBAL",
+      depotName: "Gandhinagar Depot City",
+      currency: "INR",
+      distanceUnit: "kilometers",
+    },
+  });
+
   // --- 3. Seed Demo Users ---
   console.log("Creating demo users...");
   const demoPassword = "demo123";

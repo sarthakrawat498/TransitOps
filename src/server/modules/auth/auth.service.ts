@@ -34,15 +34,17 @@ function issueToken(user: AuthUser): AuthTokens {
     role: user.role.name,
   };
 
+  const signOptions: jwt.SignOptions = {
+    algorithm: "HS256",
+    expiresIn: config.jwtExpiresIn as jwt.SignOptions["expiresIn"],
+    issuer: config.jwtIssuer,
+    audience: config.jwtAudience,
+  };
+
   const accessToken = jwt.sign(
     payload,
     config.jwtSecret,
-    {
-      algorithm: "HS256",
-      expiresIn: config.jwtExpiresIn,
-      issuer: config.jwtIssuer,
-      audience: config.jwtAudience,
-    },
+    signOptions,
   );
 
   return { accessToken };
