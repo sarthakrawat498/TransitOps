@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/constants";
+import { config } from "@/lib/config";
 import * as authService from "@/server/modules/auth/auth.service";
-import { loginSchema, signupSchema } from "@/server/modules/auth/auth.validators";
-import { verifyAuth } from "@/server/shared/middleware/auth-guard";
+import { loginSchema } from "@/server/modules/auth/auth.validators";
+import { ALL_ROLES, authorizeRoles } from "@/server/shared/middleware/rbac";
 import {
   buildSuccessResponse,
   createRequestId,
@@ -12,11 +13,19 @@ import {
 function setAuthCookie(response: NextResponse, token: string) {
   response.cookies.set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: config.authCookieSameSite,
+    secure: config.authCookieSecure,
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
+    priority: "high",
   });
+}
+
+function setNoStoreHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("Expires", "0");
+  return response;
 }
 
 export async function handleLogin(request: Request) {
@@ -34,44 +43,28 @@ export async function handleLogin(request: Request) {
   );
 
   setAuthCookie(response, result.tokens.accessToken);
-  return response;
-}
-
-export async function handleSignup(request: Request) {
-  const requestId = createRequestId();
-  const body = await request.json();
-  const input = signupSchema.parse(body);
-  const result = await authService.signup(input);
-
-  const response = NextResponse.json(
-    buildSuccessResponse({
-      message: "Signup successful",
-      data: { user: result.user },
-      requestId,
-    }),
-    { status: 201 },
-  );
-
-  setAuthCookie(response, result.tokens.accessToken);
-  return response;
+  return setNoStoreHeaders(response);
 }
 
 export async function handleMe(request: Request) {
   const requestId = createRequestId();
-  const authUser = verifyAuth(request);
+  const authUser = await authorizeRoles(request, ALL_ROLES);
   const user = await authService.getCurrentUser(authUser.id);
 
-  return NextResponse.json(
+  const response = NextResponse.json(
     buildSuccessResponse({
       message: "User fetched successfully",
       data: { user },
       requestId,
     }),
   );
+
+  return setNoStoreHeaders(response);
 }
 
-export async function handleLogout() {
+export async function handleLogout(request: Request) {
   const requestId = createRequestId();
+  await authorizeRoles(request, ALL_ROLES);
   const response = NextResponse.json(
     buildSuccessResponse({
       message: "Logout successful",
@@ -81,11 +74,12 @@ export async function handleLogout() {
 
   response.cookies.set(AUTH_COOKIE_NAME, "", {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: config.authCookieSameSite,
+    secure: config.authCookieSecure,
     path: "/",
     maxAge: 0,
+    priority: "high",
   });
 
-  return response;
+  return setNoStoreHeaders(response);
 }

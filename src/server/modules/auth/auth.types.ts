@@ -5,14 +5,29 @@ export interface LoginParams {
   password: string;
 }
 
-export interface SignupParams {
-  email: string;
-  password: string;
-  fullName: string;
-}
-
 export interface AuthTokens {
   accessToken: string;
+}
+
+export interface JwtTokenPayload {
+  sub: string;
+  email: string;
+  fullName: string;
+  role: RoleName;
+}
+
+export interface LoginResult {
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    role: {
+      id: string;
+      name: RoleName;
+      description: string | null;
+    };
+  };
+  tokens: AuthTokens;
 }
 
 export interface AuthUserRecord {

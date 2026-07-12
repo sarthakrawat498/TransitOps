@@ -1,17 +1,16 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-import { RoleName } from "@/generated/prisma/enums";
 import { config } from "@/lib/config";
-import { InvalidCredentialsError, UserAlreadyExistsError } from "@/server/modules/auth/auth.errors";
+import { InvalidCredentialsError } from "@/server/modules/auth/auth.errors";
 import * as authReader from "@/server/modules/auth/auth.reader";
 import type {
   AuthTokens,
   AuthUserRecord,
+  JwtTokenPayload,
+  LoginResult,
   LoginParams,
-  SignupParams,
 } from "@/server/modules/auth/auth.types";
-import * as authWriter from "@/server/modules/auth/auth.writer";
 import type { AuthUser } from "@/types";
 
 function toPublicUser(user: AuthUserRecord): AuthUser {
@@ -28,44 +27,28 @@ function toPublicUser(user: AuthUserRecord): AuthUser {
 }
 
 function issueToken(user: AuthUser): AuthTokens {
+  const payload: JwtTokenPayload = {
+    sub: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    role: user.role.name,
+  };
+
   const accessToken = jwt.sign(
-    {
-      sub: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role.name,
-    },
+    payload,
     config.jwtSecret,
-    { expiresIn: "7d" },
+    {
+      algorithm: "HS256",
+      expiresIn: config.jwtExpiresIn,
+      issuer: config.jwtIssuer,
+      audience: config.jwtAudience,
+    },
   );
 
   return { accessToken };
 }
 
-export async function signup(
-  params: SignupParams,
-): Promise<{ user: AuthUser; tokens: AuthTokens }> {
-  const existing = await authReader.getUserByEmail(params.email);
-  if (existing) {
-    throw new UserAlreadyExistsError();
-  }
-
-  const role = await authReader.getRoleByName(RoleName.DRIVER);
-  if (!role) {
-    throw new InvalidCredentialsError("Default signup role is not configured");
-  }
-
-  const user = await authWriter.createUser({
-    ...params,
-    roleId: role.id,
-  });
-  const publicUser = toPublicUser(user);
-  const tokens = issueToken(publicUser);
-
-  return { user: publicUser, tokens };
-}
-
-export async function login(params: LoginParams): Promise<{ user: AuthUser; tokens: AuthTokens }> {
+export async function login(params: LoginParams): Promise<LoginResult> {
   const user = await authReader.getUserByEmail(params.email);
   if (!user) {
     throw new InvalidCredentialsError();
@@ -88,8 +71,8 @@ export async function login(params: LoginParams): Promise<{ user: AuthUser; toke
 
 export async function getCurrentUser(userId: string): Promise<AuthUser> {
   const user = await authReader.getUserById(userId);
-  if (!user) {
-    throw new InvalidCredentialsError("User not found");
+  if (!user || !user.isActive) {
+    throw new InvalidCredentialsError("Invalid session");
   }
 
   return toPublicUser(user);

@@ -4,33 +4,51 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { AppError } from "@/server/shared/errors/app-error";
 import {
+  applyCorsHeaders,
+  assertCorsOrigin,
+} from "@/server/shared/middleware/cors";
+import {
   buildErrorResponse,
   createRequestId,
 } from "@/server/shared/responses/response-builder";
 
-type RouteHandler = (request: Request, context?: unknown) => Promise<NextResponse>;
+type RouteHandler = (
+  request: Request,
+  context?: unknown,
+) => Promise<NextResponse> | NextResponse;
+
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("Referrer-Policy", "no-referrer");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  return response;
+}
 
 export function withErrorHandler(handler: RouteHandler): RouteHandler {
   return async (request: Request, context?: unknown) => {
     const requestId = createRequestId();
 
     try {
-      return await handler(request, context);
+      assertCorsOrigin(request);
+      const response = await handler(request, context);
+      return applySecurityHeaders(applyCorsHeaders(response, request));
     } catch (error) {
       if (error instanceof AppError) {
         logger.warn(error.message, requestId, { code: error.code });
-        return NextResponse.json(
+        const response = NextResponse.json(
           buildErrorResponse({
             message: error.message,
             requestId,
           }),
           { status: error.statusCode },
         );
+        return applySecurityHeaders(applyCorsHeaders(response, request));
       }
 
       if (error instanceof ZodError) {
         logger.warn("Validation failed", requestId);
-        return NextResponse.json(
+        const response = NextResponse.json(
           buildErrorResponse({
             message: "Validation failed",
             errors: error.flatten(),
@@ -38,19 +56,21 @@ export function withErrorHandler(handler: RouteHandler): RouteHandler {
           }),
           { status: 400 },
         );
+        return applySecurityHeaders(applyCorsHeaders(response, request));
       }
 
       logger.error("Unhandled error", requestId, {
         error: error instanceof Error ? error.message : "Unknown error",
       });
 
-      return NextResponse.json(
+      const response = NextResponse.json(
         buildErrorResponse({
           message: "Internal server error",
           requestId,
         }),
         { status: 500 },
       );
+      return applySecurityHeaders(applyCorsHeaders(response, request));
     }
   };
 }
