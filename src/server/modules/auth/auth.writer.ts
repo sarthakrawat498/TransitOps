@@ -8,14 +8,16 @@ const SALT_ROUNDS = 10;
 export async function createUser(data: {
   email: string;
   password: string;
-  name?: string;
+  fullName: string;
+  roleId: string;
 }): Promise<AuthUserRecord> {
   const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
 
   return authRepository.createUserRecord({
     email: data.email,
     hashedPassword,
-    name: data.name,
+    fullName: data.fullName,
+    roleId: data.roleId,
   });
 }
 

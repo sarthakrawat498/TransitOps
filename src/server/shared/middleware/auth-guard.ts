@@ -1,14 +1,16 @@
 import jwt from "jsonwebtoken";
 
 import { AUTH_COOKIE_NAME } from "@/constants";
+import type { RoleName } from "@/generated/prisma/enums";
 import { config } from "@/lib/config";
 import { UnauthorizedError } from "@/server/shared/errors/app-error";
-import type { AuthUser } from "@/types";
+import type { AuthSessionUser } from "@/types";
 
 interface JwtPayload {
   sub: string;
   email: string;
-  name?: string | null;
+  fullName: string;
+  role: RoleName;
 }
 
 function extractToken(request: Request): string | null {
@@ -32,7 +34,7 @@ function extractToken(request: Request): string | null {
   return cookies[AUTH_COOKIE_NAME] ?? null;
 }
 
-export function verifyAuth(request: Request): AuthUser {
+export function verifyAuth(request: Request): AuthSessionUser {
   const token = extractToken(request);
 
   if (!token) {
@@ -45,7 +47,8 @@ export function verifyAuth(request: Request): AuthUser {
     return {
       id: payload.sub,
       email: payload.email,
-      name: payload.name ?? null,
+      fullName: payload.fullName,
+      role: payload.role,
     };
   } catch {
     throw new UnauthorizedError("Invalid or expired token");

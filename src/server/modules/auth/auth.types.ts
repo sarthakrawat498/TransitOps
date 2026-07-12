@@ -1,3 +1,5 @@
+import type { RoleName } from "@/generated/prisma/enums";
+
 export interface LoginParams {
   email: string;
   password: string;
@@ -6,7 +8,7 @@ export interface LoginParams {
 export interface SignupParams {
   email: string;
   password: string;
-  name?: string;
+  fullName: string;
 }
 
 export interface AuthTokens {
@@ -15,9 +17,16 @@ export interface AuthTokens {
 
 export interface AuthUserRecord {
   id: string;
+  roleId: string;
   email: string;
-  name: string | null;
+  fullName: string;
   hashedPassword: string;
+  isActive: boolean;
+  role: {
+    id: string;
+    name: RoleName;
+    description: string | null;
+  };
   createdAt: Date;
   updatedAt: Date;
 }

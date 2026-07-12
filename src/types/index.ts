@@ -1,3 +1,5 @@
+import type { RoleName } from "@/generated/prisma/enums";
+
 export interface ApiSuccessResponse<T = unknown> {
   success: true;
   message: string;
@@ -18,5 +20,17 @@ export interface ApiErrorResponse {
 export interface AuthUser {
   id: string;
   email: string;
-  name: string | null;
+  fullName: string;
+  role: {
+    id: string;
+    name: RoleName;
+    description: string | null;
+  };
+}
+
+export interface AuthSessionUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: RoleName;
 }

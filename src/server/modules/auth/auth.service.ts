@@ -1,18 +1,29 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+import { RoleName } from "@/generated/prisma/enums";
 import { config } from "@/lib/config";
 import { InvalidCredentialsError, UserAlreadyExistsError } from "@/server/modules/auth/auth.errors";
 import * as authReader from "@/server/modules/auth/auth.reader";
-import type { AuthTokens, LoginParams, SignupParams } from "@/server/modules/auth/auth.types";
+import type {
+  AuthTokens,
+  AuthUserRecord,
+  LoginParams,
+  SignupParams,
+} from "@/server/modules/auth/auth.types";
 import * as authWriter from "@/server/modules/auth/auth.writer";
 import type { AuthUser } from "@/types";
 
-function toPublicUser(user: { id: string; email: string; name: string | null }): AuthUser {
+function toPublicUser(user: AuthUserRecord): AuthUser {
   return {
     id: user.id,
     email: user.email,
-    name: user.name,
+    fullName: user.fullName,
+    role: {
+      id: user.role.id,
+      name: user.role.name,
+      description: user.role.description,
+    },
   };
 }
 
@@ -21,7 +32,8 @@ function issueToken(user: AuthUser): AuthTokens {
     {
       sub: user.id,
       email: user.email,
-      name: user.name,
+      fullName: user.fullName,
+      role: user.role.name,
     },
     config.jwtSecret,
     { expiresIn: "7d" },
@@ -30,13 +42,23 @@ function issueToken(user: AuthUser): AuthTokens {
   return { accessToken };
 }
 
-export async function signup(params: SignupParams): Promise<{ user: AuthUser; tokens: AuthTokens }> {
+export async function signup(
+  params: SignupParams,
+): Promise<{ user: AuthUser; tokens: AuthTokens }> {
   const existing = await authReader.getUserByEmail(params.email);
   if (existing) {
     throw new UserAlreadyExistsError();
   }
 
-  const user = await authWriter.createUser(params);
+  const role = await authReader.getRoleByName(RoleName.DRIVER);
+  if (!role) {
+    throw new InvalidCredentialsError("Default signup role is not configured");
+  }
+
+  const user = await authWriter.createUser({
+    ...params,
+    roleId: role.id,
+  });
   const publicUser = toPublicUser(user);
   const tokens = issueToken(publicUser);
 
@@ -46,6 +68,10 @@ export async function signup(params: SignupParams): Promise<{ user: AuthUser; to
 export async function login(params: LoginParams): Promise<{ user: AuthUser; tokens: AuthTokens }> {
   const user = await authReader.getUserByEmail(params.email);
   if (!user) {
+    throw new InvalidCredentialsError();
+  }
+
+  if (!user.isActive) {
     throw new InvalidCredentialsError();
   }
 
