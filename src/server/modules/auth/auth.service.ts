@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import type { SignOptions } from "jsonwebtoken";
 
 import { config } from "@/lib/config";
 import { InvalidCredentialsError } from "@/server/modules/auth/auth.errors";
@@ -33,17 +34,14 @@ function issueToken(user: AuthUser): AuthTokens {
     fullName: user.fullName,
     role: user.role.name,
   };
+  const signOptions: SignOptions = {
+    algorithm: "HS256",
+    expiresIn: config.jwtExpiresIn as SignOptions["expiresIn"],
+    issuer: config.jwtIssuer,
+    audience: config.jwtAudience,
+  };
 
-  const accessToken = jwt.sign(
-    payload,
-    config.jwtSecret,
-    {
-      algorithm: "HS256",
-      expiresIn: config.jwtExpiresIn,
-      issuer: config.jwtIssuer,
-      audience: config.jwtAudience,
-    },
-  );
+  const accessToken = jwt.sign(payload, config.jwtSecret, signOptions);
 
   return { accessToken };
 }
