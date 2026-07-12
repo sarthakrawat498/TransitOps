@@ -11,7 +11,7 @@ function getSearchParam(request: Request, key: string): string | undefined {
 
 export async function handleGetDashboardOverview(request: Request) {
   const requestId = createRequestId();
-  verifyAuth(request);
+  await verifyAuth(request);
 
   const filters = dashboardOverviewQuerySchema.parse({
     vehicleType: getSearchParam(request, "vehicleType"),
@@ -33,7 +33,7 @@ export async function handleGetDashboardOverview(request: Request) {
 
 export async function handleGetDashboardFilters(request: Request) {
   const requestId = createRequestId();
-  verifyAuth(request);
+  await verifyAuth(request);
 
   const filters = await dashboardService.getFilters();
 
