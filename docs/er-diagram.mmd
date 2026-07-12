@@ -1,0 +1,112 @@
+erDiagram
+  Role ||--o{ User : has
+  User ||--o{ Trip : creates
+
+  Vehicle ||--o{ Trip : assigned_to
+  Driver ||--o{ Trip : drives
+
+  Vehicle ||--o{ MaintenanceLog : has
+  Vehicle ||--o{ FuelLog : has
+  Vehicle ||--o{ Expense : has
+
+  Trip ||--o{ FuelLog : may_have
+
+  Role {
+    String id PK
+    RoleName name UK
+    String description
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  User {
+    String id PK
+    String roleId FK
+    String fullName
+    String email UK
+    String hashedPassword
+    Boolean isActive
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  Vehicle {
+    String id PK
+    String registrationNumber UK
+    String model
+    String type
+    Decimal maxLoadCapacity
+    Decimal odometer
+    Decimal acquisitionCost
+    VehicleStatus status
+    String region
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  Driver {
+    String id PK
+    String fullName
+    String licenseNumber UK
+    String licenseCategory
+    DateTime licenseExpiry
+    String contactNumber
+    Int safetyScore
+    DriverStatus status
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  Trip {
+    String id PK
+    String vehicleId FK
+    String driverId FK
+    String createdById FK
+    String source
+    String destination
+    Decimal cargoWeight
+    Decimal plannedDistance
+    Decimal actualDistance
+    Decimal revenue
+    TripStatus status
+    Decimal finalOdometer
+    DateTime dispatchedAt
+    DateTime completedAt
+    DateTime cancelledAt
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  MaintenanceLog {
+    String id PK
+    String vehicleId FK
+    String description
+    Decimal cost
+    MaintenanceStatus status
+    DateTime startedAt
+    DateTime completedAt
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  FuelLog {
+    String id PK
+    String vehicleId FK
+    String tripId FK
+    Decimal liters
+    Decimal cost
+    DateTime logDate
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  Expense {
+    String id PK
+    String vehicleId FK
+    ExpenseCategory category
+    Decimal amount
+    DateTime expenseDate
+    String description
+    DateTime createdAt
+    DateTime updatedAt
+  }
