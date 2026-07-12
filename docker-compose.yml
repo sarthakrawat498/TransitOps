@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: main-event-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: mainevent
+      POSTGRES_PASSWORD: mainevent
+      POSTGRES_DB: mainevent
+    volumes:
+      - main_event_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  main_event_postgres_data:
