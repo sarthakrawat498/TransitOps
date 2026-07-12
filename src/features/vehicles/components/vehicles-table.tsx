@@ -110,7 +110,7 @@ export function VehiclesTable() {
           <Select
             value={statusFilter ?? "all"}
             onValueChange={(value) => {
-              setStatusFilter(value === "all" ? undefined : value);
+              setStatusFilter(!value || value === "all" ? undefined : value);
               setPage(1);
             }}
           >
@@ -171,9 +171,13 @@ export function VehiclesTable() {
                   <TableCell className="font-medium">{vehicle.registrationNumber}</TableCell>
                   <TableCell>{vehicle.model}</TableCell>
                   <TableCell>{vehicle.type}</TableCell>
-                  <TableCell className="text-right">{formatNumber(vehicle.maxLoadCapacity)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(vehicle.maxLoadCapacity)}
+                  </TableCell>
                   <TableCell className="text-right">{formatNumber(vehicle.odometer)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(vehicle.acquisitionCost)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(vehicle.acquisitionCost)}
+                  </TableCell>
                   <TableCell>{vehicle.region ?? "-"}</TableCell>
                   <TableCell>
                     <Badge className={statusColors[vehicle.status]}>
@@ -234,11 +238,7 @@ export function VehiclesTable() {
         </div>
       )}
 
-      <VehicleFormDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onSuccess={handleSuccess}
-      />
+      <VehicleFormDialog open={createOpen} onOpenChange={setCreateOpen} onSuccess={handleSuccess} />
 
       <VehicleFormDialog
         open={!!editVehicle}

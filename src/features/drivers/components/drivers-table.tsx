@@ -117,7 +117,7 @@ export function DriversTable() {
           <Select
             value={statusFilter ?? "all"}
             onValueChange={(value) => {
-              setStatusFilter(value === "all" ? undefined : value);
+              setStatusFilter(!value || value === "all" ? undefined : value);
               setPage(1);
             }}
           >
@@ -211,11 +211,7 @@ export function DriversTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setEditDriver(driver)}
-                      >
+                      <Button variant="ghost" size="icon-xs" onClick={() => setEditDriver(driver)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button
@@ -263,11 +259,7 @@ export function DriversTable() {
         </div>
       )}
 
-      <DriverFormDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onSuccess={handleSuccess}
-      />
+      <DriverFormDialog open={createOpen} onOpenChange={setCreateOpen} onSuccess={handleSuccess} />
 
       <DriverFormDialog
         open={!!editDriver}

@@ -1,8 +1,9 @@
+import "dotenv/config";
+
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { PrismaClient } from "../src/generated/prisma/client";
-import "dotenv/config";
 
 // Create pg pool and Prisma client for seeding
 const databaseUrl = process.env.DATABASE_URL;
@@ -206,8 +207,19 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { fullName: adminFullName, hashedPassword: hashedAdminPassword, roleId: superAdminRoleId, isActive: true },
-    create: { email: adminEmail, fullName: adminFullName, hashedPassword: hashedAdminPassword, roleId: superAdminRoleId, isActive: true },
+    update: {
+      fullName: adminFullName,
+      hashedPassword: hashedAdminPassword,
+      roleId: superAdminRoleId,
+      isActive: true,
+    },
+    create: {
+      email: adminEmail,
+      fullName: adminFullName,
+      hashedPassword: hashedAdminPassword,
+      roleId: superAdminRoleId,
+      isActive: true,
+    },
   });
   console.log(`  ✓ Super admin: ${adminEmail} / ${adminPassword}\n`);
 
@@ -239,8 +251,19 @@ async function main() {
 
     const record = await prisma.user.upsert({
       where: { email: user.email },
-      update: { fullName: user.fullName, hashedPassword: hashedDemoPassword, roleId, isActive: true },
-      create: { email: user.email, fullName: user.fullName, hashedPassword: hashedDemoPassword, roleId, isActive: true },
+      update: {
+        fullName: user.fullName,
+        hashedPassword: hashedDemoPassword,
+        roleId,
+        isActive: true,
+      },
+      create: {
+        email: user.email,
+        fullName: user.fullName,
+        hashedPassword: hashedDemoPassword,
+        roleId,
+        isActive: true,
+      },
     });
     userRecords.set(user.email, record.id);
     console.log(`  ✓ ${user.fullName} (${user.role}): ${user.email}`);
@@ -355,7 +378,9 @@ async function main() {
       startedAt: maintenanceData.startedAt,
     },
   });
-  console.log(`  ✓ Maintenance: ${maintenanceData.description.substring(0, 40)}... (${maintenanceData.status})\n`);
+  console.log(
+    `  ✓ Maintenance: ${maintenanceData.description.substring(0, 40)}... (${maintenanceData.status})\n`,
+  );
 
   // --- 8. Seed Fuel Log ---
   console.log("Creating fuel log...");

@@ -41,11 +41,7 @@ function issueToken(user: AuthUser): AuthTokens {
     audience: config.jwtAudience,
   };
 
-  const accessToken = jwt.sign(
-    payload,
-    config.jwtSecret,
-    signOptions,
-  );
+  const accessToken = jwt.sign(payload, config.jwtSecret, signOptions);
 
   return { accessToken };
 }

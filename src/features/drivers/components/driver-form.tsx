@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -43,7 +43,7 @@ function formatDateForInput(dateStr: string | undefined): string {
 
 export function DriverForm({ driver, onSubmit, isSubmitting }: DriverFormProps) {
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as Resolver<FormValues>,
     defaultValues: {
       fullName: driver?.fullName ?? "",
       licenseNumber: driver?.licenseNumber ?? "",
@@ -84,11 +84,7 @@ export function DriverForm({ driver, onSubmit, isSubmitting }: DriverFormProps) 
               <FormItem>
                 <FormLabel>License Number</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="MH1420210012345"
-                    disabled={!!driver}
-                  />
+                  <Input {...field} placeholder="MH1420210012345" disabled={!!driver} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -120,7 +116,11 @@ export function DriverForm({ driver, onSubmit, isSubmitting }: DriverFormProps) 
                 <FormControl>
                   <Input
                     type="date"
-                    value={field.value instanceof Date ? formatDateForInput(field.value.toISOString()) : ""}
+                    value={
+                      field.value instanceof Date
+                        ? formatDateForInput(field.value.toISOString())
+                        : ""
+                    }
                     onChange={(e) => field.onChange(new Date(e.target.value))}
                   />
                 </FormControl>

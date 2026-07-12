@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -37,7 +37,7 @@ interface VehicleFormProps {
 
 export function VehicleForm({ vehicle, onSubmit, isSubmitting }: VehicleFormProps) {
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as Resolver<FormValues>,
     defaultValues: {
       registrationNumber: vehicle?.registrationNumber ?? "",
       model: vehicle?.model ?? "",
@@ -64,11 +64,7 @@ export function VehicleForm({ vehicle, onSubmit, isSubmitting }: VehicleFormProp
             <FormItem>
               <FormLabel>Registration Number</FormLabel>
               <FormControl>
-                <Input
-                  {...field}
-                  placeholder="MH12AB1234"
-                  disabled={!!vehicle}
-                />
+                <Input {...field} placeholder="MH12AB1234" disabled={!!vehicle} />
               </FormControl>
               <FormMessage />
             </FormItem>

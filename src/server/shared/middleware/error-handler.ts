@@ -3,18 +3,12 @@ import { NextResponse } from "next/server";
 
 import { logger } from "@/lib/logger";
 import { AppError } from "@/server/shared/errors/app-error";
-import {
-  applyCorsHeaders,
-  assertCorsOrigin,
-} from "@/server/shared/middleware/cors";
-import {
-  buildErrorResponse,
-  createRequestId,
-} from "@/server/shared/responses/response-builder";
+import { applyCorsHeaders, assertCorsOrigin } from "@/server/shared/middleware/cors";
+import { buildErrorResponse, createRequestId } from "@/server/shared/responses/response-builder";
 
-type RouteHandler = (
+type RouteHandler<TContext = unknown> = (
   request: Request,
-  context?: unknown,
+  context: TContext,
 ) => Promise<NextResponse> | NextResponse;
 
 function applySecurityHeaders(response: NextResponse): NextResponse {
@@ -25,8 +19,10 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-export function withErrorHandler(handler: RouteHandler): RouteHandler {
-  return async (request: Request, context?: unknown) => {
+export function withErrorHandler<TContext = unknown>(
+  handler: RouteHandler<TContext>,
+): RouteHandler<TContext> {
+  return async (request: Request, context: TContext) => {
     const requestId = createRequestId();
 
     try {
