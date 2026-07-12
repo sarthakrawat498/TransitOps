@@ -56,10 +56,11 @@ function mapRecentTrip(
 function mapVehicleStatusGroups(
   groups: Awaited<ReturnType<typeof dashboardReader.getVehicleStatusGroups>>,
   totalVehicles: number,
+  statuses: VehicleStatus[] = Object.values(VehicleStatus),
 ): DashboardVehicleStatusItem[] {
   const countByStatus = new Map(groups.map((group) => [group.status, group._count._all]));
 
-  return Object.values(VehicleStatus).map((status) => {
+  return statuses.map((status) => {
     const count = countByStatus.get(status) ?? 0;
 
     return {
@@ -138,7 +139,11 @@ export async function getOverview(filters: DashboardOverviewFilters): Promise<Da
       fleetUtilizationPercent: percentage(vehiclesOnTrip, activeVehicles),
     },
     recentTrips: recentTrips.map(mapRecentTrip),
-    vehicleStatus: mapVehicleStatusGroups(vehicleStatusGroups, totalVehiclesForStatus),
+    vehicleStatus: mapVehicleStatusGroups(
+      vehicleStatusGroups,
+      totalVehiclesForStatus,
+      filters.vehicleStatus ? [filters.vehicleStatus] : undefined,
+    ),
   };
 }
 
