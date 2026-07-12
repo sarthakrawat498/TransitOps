@@ -14,7 +14,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FuelExpensesFormField } from "@/features/fuel-expenses/components/fuel-expenses-form-field";
 import { getFuelExpensesFormError } from "@/features/fuel-expenses/components/form-errors";
 import { useCreateExpense } from "@/features/fuel-expenses/hooks/use-create-expense";
@@ -53,7 +59,6 @@ export function AddExpenseDialog({ vehicles }: AddExpenseDialogProps) {
   const defaultValues = useMemo(() => getDefaultFormValues(vehicles), [vehicles]);
   const [formValues, setFormValues] = useState<ExpenseFormValues>(defaultValues);
   const createExpenseMutation = useCreateExpense();
-  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === formValues.vehicleId);
 
   const handleChange = (key: keyof ExpenseFormValues, value: string) => {
     setFormValues((currentValues) => ({
@@ -89,22 +94,22 @@ export function AddExpenseDialog({ vehicles }: AddExpenseDialogProps) {
     <>
       <Button
         type="button"
-        className="min-w-32 bg-orange-500 text-orange-950 hover:bg-orange-400"
+        variant="outline"
         onClick={() => {
           setFormValues(defaultValues);
           setOpen(true);
         }}
       >
-        <Plus className="size-4" />
-        Add Expense
+        <Plus className="mr-1 size-4" />
+        Add expense
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="border border-white/10 bg-[#151515] text-foreground sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add Expense</DialogTitle>
+            <DialogTitle>Add expense</DialogTitle>
             <DialogDescription>
-              Add toll, permit, insurance, parking, fine, or other operational expenses.
+              Record toll, permit, insurance, parking, fine, or other operational expenses.
             </DialogDescription>
           </DialogHeader>
 
@@ -118,12 +123,8 @@ export function AddExpenseDialog({ vehicles }: AddExpenseDialogProps) {
                   }
                 }}
               >
-                <SelectTrigger className="h-10 w-full border-white/30 bg-white/10 text-foreground">
-                  <span className={selectedVehicle ? undefined : "text-muted-foreground"}>
-                    {selectedVehicle
-                      ? `${selectedVehicle.registrationNumber} - ${selectedVehicle.model}`
-                      : "Select vehicle"}
-                  </span>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select vehicle" />
                 </SelectTrigger>
                 <SelectContent>
                   {vehicles.map((vehicle) => (
@@ -148,8 +149,8 @@ export function AddExpenseDialog({ vehicles }: AddExpenseDialogProps) {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-10 w-full border-white/30 bg-white/10 text-foreground">
-                    <span>{formValues.category}</span>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
                     {expenseCategories.map((category) => (
@@ -168,7 +169,6 @@ export function AddExpenseDialog({ vehicles }: AddExpenseDialogProps) {
                   step="0.01"
                   type="number"
                   value={formValues.amount}
-                  className="h-10 border-white/30 bg-white/10 text-foreground"
                   onChange={(event) => handleChange("amount", event.target.value)}
                 />
               </FuelExpensesFormField>
@@ -179,7 +179,6 @@ export function AddExpenseDialog({ vehicles }: AddExpenseDialogProps) {
                 required
                 type="date"
                 value={formValues.expenseDate}
-                className="h-10 border-white/30 bg-white/10 text-foreground"
                 onChange={(event) => handleChange("expenseDate", event.target.value)}
               />
             </FuelExpensesFormField>
@@ -187,7 +186,6 @@ export function AddExpenseDialog({ vehicles }: AddExpenseDialogProps) {
             <FuelExpensesFormField label="Description">
               <Input
                 value={formValues.description}
-                className="h-10 border-white/30 bg-white/10 text-foreground"
                 placeholder="Toll booth, permit renewal..."
                 onChange={(event) => handleChange("description", event.target.value)}
               />
@@ -198,7 +196,7 @@ export function AddExpenseDialog({ vehicles }: AddExpenseDialogProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={createExpenseMutation.isPending}>
-                {createExpenseMutation.isPending ? "Saving..." : "Save Expense"}
+                {createExpenseMutation.isPending ? "Saving..." : "Save expense"}
               </Button>
             </DialogFooter>
           </form>

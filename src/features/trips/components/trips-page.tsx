@@ -17,6 +17,7 @@ import {
   useTrips,
   useUpdateTrip,
 } from "@/features/trips/hooks/use-trips";
+import { matchesAnySearch, useSearch } from "@/providers/search-provider";
 
 function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -32,6 +33,7 @@ function getErrorMessage(error: unknown): string {
 export function TripsPage() {
   const tripsQuery = useTrips({ pageSize: 50 });
   const optionsQuery = useTripOptions();
+  const { query } = useSearch();
   const createAndDispatchMutation = useCreateAndDispatchTrip();
   const dispatchMutation = useDispatchTrip();
   const cancelMutation = useCancelTrip();
@@ -116,7 +118,18 @@ export function TripsPage() {
       </div>
 
       <TripLiveBoard
-        trips={tripsQuery.data?.trips ?? []}
+        trips={(tripsQuery.data?.trips ?? []).filter((trip) =>
+          matchesAnySearch(
+            [
+              trip.displayId,
+              trip.route,
+              trip.vehicleLabel,
+              trip.driverName,
+              trip.statusLabel,
+            ],
+            query,
+          ),
+        )}
         options={optionsQuery.data}
         isLoading={tripsQuery.isLoading}
         isActionPending={isActionPending}

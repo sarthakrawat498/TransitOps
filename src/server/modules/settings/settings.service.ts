@@ -6,6 +6,7 @@ import type {
   UpdateSettingsParams,
 } from "@/server/modules/settings/settings.types";
 import * as settingsWriter from "@/server/modules/settings/settings.writer";
+import { getRoleMatrix } from "@/server/shared/rbac/permissions";
 
 const defaultGeneralSettings: UpdateSettingsParams = {
   depotName: "TransitOps Central Depot",
@@ -13,48 +14,32 @@ const defaultGeneralSettings: UpdateSettingsParams = {
   distanceUnit: "kilometers",
 };
 
-const accessMatrix: SettingsAccessMatrixItem[] = [
-  {
-    role: RoleName.FLEET_MANAGER,
-    fleet: "manage",
-    drivers: "manage",
-    trips: "none",
-    fuelAndExpenses: "none",
-    analytics: "view",
-  },
-  {
-    role: RoleName.DRIVER,
-    fleet: "none",
-    drivers: "none",
-    trips: "view",
-    fuelAndExpenses: "none",
-    analytics: "none",
-  },
-  {
-    role: RoleName.SAFETY_OFFICER,
-    fleet: "none",
-    drivers: "manage",
-    trips: "view",
-    fuelAndExpenses: "none",
-    analytics: "view",
-  },
-  {
-    role: RoleName.FINANCIAL_ANALYST,
-    fleet: "view",
-    drivers: "none",
-    trips: "none",
-    fuelAndExpenses: "manage",
-    analytics: "manage",
-  },
-  {
-    role: RoleName.SUPER_ADMIN,
-    fleet: "manage",
-    drivers: "manage",
-    trips: "manage",
-    fuelAndExpenses: "manage",
-    analytics: "manage",
-  },
+const MATRIX_ROLE_ORDER: RoleName[] = [
+  RoleName.SUPER_ADMIN,
+  RoleName.FLEET_MANAGER,
+  RoleName.SAFETY_OFFICER,
+  RoleName.FINANCIAL_ANALYST,
+  RoleName.DRIVER,
 ];
+
+function buildAccessMatrix(): SettingsAccessMatrixItem[] {
+  const matrix = getRoleMatrix();
+
+  return MATRIX_ROLE_ORDER.map((role) => {
+    const permissions = matrix[role];
+
+    return {
+      role,
+      fleet: permissions.fleet,
+      drivers: permissions.drivers,
+      trips: permissions.trips,
+      maintenance: permissions.maintenance,
+      fuelAndExpenses: permissions.fuelAndExpenses,
+      analytics: permissions.analytics,
+      settings: permissions.settings,
+    };
+  });
+}
 
 async function getOrCreateSettingsRecord() {
   const existing = await settingsReader.getAppSettings();
@@ -74,7 +59,7 @@ export async function getSettings(): Promise<SettingsPayload> {
       currency: settings.currency,
       distanceUnit: settings.distanceUnit,
     },
-    accessMatrix,
+    accessMatrix: buildAccessMatrix(),
   };
 }
 

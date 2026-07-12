@@ -27,6 +27,7 @@ import {
 import { useVehicles } from "@/features/vehicles/hooks/use-vehicles";
 import { useDeleteVehicle } from "@/features/vehicles/hooks/use-delete-vehicle";
 import type { Vehicle } from "@/features/vehicles/services/vehicles.service";
+import { matchesAnySearch, useSearch } from "@/providers/search-provider";
 import { VehicleFormDialog } from "./vehicle-form-dialog";
 import { DeleteVehicleDialog } from "./delete-vehicle-dialog";
 
@@ -70,6 +71,7 @@ export function VehiclesTable() {
     limit: 20,
   });
 
+  const { query } = useSearch();
   const deleteMutation = useDeleteVehicle();
 
   const handleDelete = async () => {
@@ -100,7 +102,18 @@ export function VehiclesTable() {
     );
   }
 
-  const vehicles = data?.data?.vehicles ?? [];
+  const vehicles = (data?.data?.vehicles ?? []).filter((vehicle) =>
+    matchesAnySearch(
+      [
+        vehicle.registrationNumber,
+        vehicle.model,
+        vehicle.type,
+        vehicle.region,
+        vehicle.status,
+      ],
+      query,
+    ),
+  );
   const meta = data?.data?.meta;
 
   return (

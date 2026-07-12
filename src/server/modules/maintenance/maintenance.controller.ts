@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import * as maintenanceService from "@/server/modules/maintenance/maintenance.service";
 import { createMaintenanceLogSchema } from "@/server/modules/maintenance/maintenance.validators";
-import { ALL_ROLES, authorizeRoles } from "@/server/shared/middleware/rbac";
+import { authorizeRead, authorizeWrite } from "@/server/shared/middleware/rbac";
 import { buildSuccessResponse, createRequestId } from "@/server/shared/responses/response-builder";
 
 function setNoStoreHeaders(response: NextResponse): NextResponse {
@@ -14,7 +14,7 @@ function setNoStoreHeaders(response: NextResponse): NextResponse {
 
 export async function handleGetMaintenance(request: Request) {
   const requestId = createRequestId();
-  await authorizeRoles(request, ALL_ROLES);
+  await authorizeRead(request, "maintenance");
 
   const overview = await maintenanceService.getOverview();
   const response = NextResponse.json(
@@ -30,7 +30,7 @@ export async function handleGetMaintenance(request: Request) {
 
 export async function handleCreateMaintenanceLog(request: Request) {
   const requestId = createRequestId();
-  await authorizeRoles(request, ALL_ROLES);
+  await authorizeWrite(request, "maintenance");
 
   const body = await request.json();
   const input = createMaintenanceLogSchema.parse(body);

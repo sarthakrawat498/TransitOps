@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { RoleName } from "@/generated/prisma/enums";
 import * as settingsService from "@/server/modules/settings/settings.service";
 import { settingsUpdateSchema } from "@/server/modules/settings/settings.validators";
-import { ALL_ROLES, authorizeRoles } from "@/server/shared/middleware/rbac";
+import { authorizeRead, authorizeWrite } from "@/server/shared/middleware/rbac";
 import {
   buildSuccessResponse,
   createRequestId,
 } from "@/server/shared/responses/response-builder";
 
-const SETTINGS_EDIT_ROLES: readonly RoleName[] = [RoleName.SUPER_ADMIN, RoleName.FLEET_MANAGER];
-
 export async function handleGetSettings(request: Request) {
   const requestId = createRequestId();
-  await authorizeRoles(request, ALL_ROLES);
+  await authorizeRead(request, "settings");
 
   const settings = await settingsService.getSettings();
 
@@ -28,7 +25,7 @@ export async function handleGetSettings(request: Request) {
 
 export async function handleUpdateSettings(request: Request) {
   const requestId = createRequestId();
-  await authorizeRoles(request, SETTINGS_EDIT_ROLES);
+  await authorizeWrite(request, "settings");
 
   const body = await request.json();
   const input = settingsUpdateSchema.parse(body);

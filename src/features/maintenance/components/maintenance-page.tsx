@@ -1,34 +1,48 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MaintenanceLogTable } from "@/features/maintenance/components/maintenance-log-table";
 import { MaintenanceRecordForm } from "@/features/maintenance/components/maintenance-record-form";
 import { useMaintenance } from "@/features/maintenance/hooks/use-maintenance";
+import { matchesAnySearch, useSearch } from "@/providers/search-provider";
 
 export function MaintenancePage() {
   const maintenanceQuery = useMaintenance();
+  const { query } = useSearch();
 
   if (maintenanceQuery.isError) {
     return <MaintenanceErrorState onRetry={() => void maintenanceQuery.refetch()} />;
   }
 
   const overview = maintenanceQuery.data;
+  const filteredLogs =
+    overview?.logs.filter((log) =>
+      matchesAnySearch([log.vehicle, log.service, log.status], query),
+    ) ?? [];
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
-      <h1 className="sr-only">Maintenance</h1>
-
-      <div className="min-h-[32rem] rounded-sm border border-white/15 bg-[#0f0f0f] px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
-        {maintenanceQuery.isLoading || !overview ? (
-          <MaintenanceSkeleton />
-        ) : (
-          <div className="grid gap-8 lg:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.35fr)]">
-            <MaintenanceRecordForm vehicles={overview.vehicles} />
-            <MaintenanceLogTable logs={overview.logs} />
-          </div>
-        )}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Maintenance Management
+        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">Maintenance</h1>
       </div>
+
+      <Card>
+        <CardContent className="min-h-[24rem] px-4 py-3">
+          {maintenanceQuery.isLoading || !overview ? (
+            <MaintenanceSkeleton />
+          ) : (
+            <div className="grid gap-8 lg:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.35fr)]">
+              <MaintenanceRecordForm vehicles={overview.vehicles} />
+              <MaintenanceLogTable logs={filteredLogs} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

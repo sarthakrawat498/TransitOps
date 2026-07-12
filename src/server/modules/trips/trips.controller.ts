@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { RoleName } from "@/generated/prisma/enums";
 import * as tripsService from "@/server/modules/trips/trips.service";
 import {
   createTripSchema,
@@ -8,17 +7,8 @@ import {
   tripListQuerySchema,
   updateTripSchema,
 } from "@/server/modules/trips/trips.validators";
-import { authorizeRoles } from "@/server/shared/middleware/rbac";
+import { authorizeRead, authorizeWrite } from "@/server/shared/middleware/rbac";
 import { buildSuccessResponse, createRequestId } from "@/server/shared/responses/response-builder";
-
-const TRIP_READ_ROLES = [
-  RoleName.SUPER_ADMIN,
-  RoleName.FLEET_MANAGER,
-  RoleName.SAFETY_OFFICER,
-  RoleName.FINANCIAL_ANALYST,
-] as const;
-
-const TRIP_WRITE_ROLES = [RoleName.SUPER_ADMIN, RoleName.FLEET_MANAGER] as const;
 
 interface RouteContext {
   params?: Promise<{ tripId?: string }> | { tripId?: string };
@@ -35,7 +25,7 @@ async function getTripIdFromContext(context?: unknown): Promise<string> {
 
 export async function handleListTrips(request: Request) {
   const requestId = createRequestId();
-  await authorizeRoles(request, TRIP_READ_ROLES);
+  await authorizeRead(request, "trips");
 
   const filters = tripListQuerySchema.parse({
     status: getSearchParam(request, "status"),
@@ -60,7 +50,7 @@ export async function handleListTrips(request: Request) {
 
 export async function handleCreateTrip(request: Request) {
   const requestId = createRequestId();
-  const authUser = await authorizeRoles(request, TRIP_WRITE_ROLES);
+  const authUser = await authorizeWrite(request, "trips");
   const input = createTripSchema.parse(await request.json());
   const trip = await tripsService.createTrip({ ...input, createdById: authUser.id });
 
@@ -76,7 +66,7 @@ export async function handleCreateTrip(request: Request) {
 
 export async function handleCreateAndDispatchTrip(request: Request) {
   const requestId = createRequestId();
-  const authUser = await authorizeRoles(request, TRIP_WRITE_ROLES);
+  const authUser = await authorizeWrite(request, "trips");
   const input = createTripSchema.parse(await request.json());
   const trip = await tripsService.createAndDispatchTrip({ ...input, createdById: authUser.id });
 
@@ -92,7 +82,7 @@ export async function handleCreateAndDispatchTrip(request: Request) {
 
 export async function handleGetTrip(request: Request, context?: unknown) {
   const requestId = createRequestId();
-  await authorizeRoles(request, TRIP_READ_ROLES);
+  await authorizeRead(request, "trips");
   const tripId = await getTripIdFromContext(context);
   const trip = await tripsService.getTrip(tripId);
 
@@ -107,7 +97,7 @@ export async function handleGetTrip(request: Request, context?: unknown) {
 
 export async function handleUpdateTrip(request: Request, context?: unknown) {
   const requestId = createRequestId();
-  await authorizeRoles(request, TRIP_WRITE_ROLES);
+  await authorizeWrite(request, "trips");
   const tripId = await getTripIdFromContext(context);
   const input = updateTripSchema.parse(await request.json());
   const trip = await tripsService.updateTrip(tripId, input);
@@ -123,7 +113,7 @@ export async function handleUpdateTrip(request: Request, context?: unknown) {
 
 export async function handleDeleteTrip(request: Request, context?: unknown) {
   const requestId = createRequestId();
-  await authorizeRoles(request, TRIP_WRITE_ROLES);
+  await authorizeWrite(request, "trips");
   const tripId = await getTripIdFromContext(context);
   const trip = await tripsService.deleteTrip(tripId);
 
@@ -138,7 +128,7 @@ export async function handleDeleteTrip(request: Request, context?: unknown) {
 
 export async function handleDispatchTrip(request: Request, context?: unknown) {
   const requestId = createRequestId();
-  await authorizeRoles(request, TRIP_WRITE_ROLES);
+  await authorizeWrite(request, "trips");
   const tripId = await getTripIdFromContext(context);
   const trip = await tripsService.dispatchTrip(tripId);
 
@@ -153,7 +143,7 @@ export async function handleDispatchTrip(request: Request, context?: unknown) {
 
 export async function handleCancelTrip(request: Request, context?: unknown) {
   const requestId = createRequestId();
-  await authorizeRoles(request, TRIP_WRITE_ROLES);
+  await authorizeWrite(request, "trips");
   const tripId = await getTripIdFromContext(context);
   const trip = await tripsService.cancelTrip(tripId);
 
@@ -168,7 +158,7 @@ export async function handleCancelTrip(request: Request, context?: unknown) {
 
 export async function handleGetTripOptions(request: Request) {
   const requestId = createRequestId();
-  await authorizeRoles(request, TRIP_WRITE_ROLES);
+  await authorizeWrite(request, "trips");
   const options = await tripsService.getOptions();
 
   return NextResponse.json(

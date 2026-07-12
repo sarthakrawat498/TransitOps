@@ -11,7 +11,14 @@ type VehicleStatus = "AVAILABLE" | "ON_TRIP" | "IN_SHOP" | "RETIRED";
 type DriverStatus = "AVAILABLE" | "ON_TRIP" | "OFF_DUTY" | "SUSPENDED";
 type TripStatus = "DRAFT" | "DISPATCHED" | "COMPLETED" | "CANCELLED";
 type MaintenanceStatus = "OPEN" | "CLOSED";
-type ExpenseCategory = "TOLL" | "PERMIT" | "INSURANCE" | "FINE" | "PARKING" | "MAINTENANCE" | "OTHER";
+type ExpenseCategory =
+  | "TOLL"
+  | "PERMIT"
+  | "INSURANCE"
+  | "FINE"
+  | "PARKING"
+  | "MAINTENANCE"
+  | "OTHER";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -22,6 +29,32 @@ const pool = new Pool({ connectionString: databaseUrl });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+// ---------------------------------------------------------------------------
+// Deterministic RNG so re-running the seed produces the same dataset.
+// ---------------------------------------------------------------------------
+function createRng(seed: number) {
+  let state = seed % 2147483647;
+  if (state <= 0) state += 2147483646;
+
+  return {
+    next(): number {
+      state = (state * 16807) % 2147483647;
+      return state / 2147483647;
+    },
+    int(min: number, max: number): number {
+      return Math.floor(this.next() * (max - min + 1)) + min;
+    },
+    pick<T>(items: readonly T[]): T {
+      return items[this.int(0, items.length - 1)];
+    },
+  };
+}
+
+const rng = createRng(42);
+
+// ---------------------------------------------------------------------------
+// Reference data
+// ---------------------------------------------------------------------------
 const roles: Array<{ name: RoleName; description: string }> = [
   {
     name: "SUPER_ADMIN",
@@ -50,138 +83,246 @@ const demoUsers: Array<{ email: string; fullName: string; role: RoleName }> = [
   { email: "safety@transitops.dev", fullName: "Priya Sharma", role: "SAFETY_OFFICER" },
   { email: "finance@transitops.dev", fullName: "Amit Patel", role: "FINANCIAL_ANALYST" },
   { email: "dispatcher@transitops.dev", fullName: "Neha Gupta", role: "FLEET_MANAGER" },
+  { email: "driver@transitops.dev", fullName: "Ravi Menon", role: "DRIVER" },
 ];
 
-const vehicles: Array<{
-  registrationNumber: string;
-  model: string;
-  type: string;
-  maxLoadCapacity: number;
-  odometer: number;
-  acquisitionCost: number;
-  status: VehicleStatus;
-  region: string;
-}> = [
-  {
-    registrationNumber: "MH12AB1234",
-    model: "Tata Prima 4928.S",
-    type: "Heavy Truck",
-    maxLoadCapacity: 28000,
-    odometer: 125000,
-    acquisitionCost: 3500000,
-    status: "AVAILABLE",
-    region: "Maharashtra",
-  },
-  {
-    registrationNumber: "KA01CD5678",
-    model: "Ashok Leyland 4220",
-    type: "Heavy Truck",
-    maxLoadCapacity: 25000,
-    odometer: 89156,
-    acquisitionCost: 3200000,
-    status: "AVAILABLE",
-    region: "Karnataka",
-  },
-  {
-    registrationNumber: "TN09EF9012",
-    model: "BharatBenz 1617R",
-    type: "Medium Truck",
-    maxLoadCapacity: 16000,
-    odometer: 45000,
-    acquisitionCost: 2100000,
-    status: "IN_SHOP",
-    region: "Tamil Nadu",
-  },
+const regions = [
+  "Maharashtra",
+  "Karnataka",
+  "Tamil Nadu",
+  "Gujarat",
+  "Delhi",
+  "Rajasthan",
+  "Kerala",
+  "Telangana",
+  "West Bengal",
+  "Punjab",
 ];
 
-const drivers: Array<{
-  fullName: string;
-  licenseNumber: string;
-  licenseCategory: string;
-  licenseExpiry: Date;
-  contactNumber: string;
-  safetyScore: number;
-  status: DriverStatus;
-}> = [
-  {
-    fullName: "Suresh Yadav",
-    licenseNumber: "MH1420210012345",
-    licenseCategory: "HMV",
-    licenseExpiry: new Date("2027-03-15"),
-    contactNumber: "+919876543210",
-    safetyScore: 95,
-    status: "AVAILABLE",
-  },
-  {
-    fullName: "Ramesh Patil",
-    licenseNumber: "KA0520200098765",
-    licenseCategory: "HMV",
-    licenseExpiry: new Date("2026-11-30"),
-    contactNumber: "+919876543211",
-    safetyScore: 88,
-    status: "AVAILABLE",
-  },
+const stateCodes = ["MH", "KA", "TN", "GJ", "DL", "RJ", "KL", "TS", "WB", "PB"];
+
+const vehicleModels: Array<{ model: string; type: string; capacity: number; cost: number }> = [
+  { model: "Tata Prima 4928.S", type: "Heavy Truck", capacity: 28000, cost: 3500000 },
+  { model: "Ashok Leyland 4220", type: "Heavy Truck", capacity: 25000, cost: 3200000 },
+  { model: "BharatBenz 1617R", type: "Medium Truck", capacity: 16000, cost: 2100000 },
+  { model: "Mahindra Blazo X 28", type: "Heavy Truck", capacity: 26000, cost: 3000000 },
+  { model: "Eicher Pro 6055", type: "Medium Truck", capacity: 12000, cost: 1800000 },
+  { model: "Volvo FH 460", type: "Heavy Truck", capacity: 34000, cost: 5500000 },
+  { model: "Tata Ace Gold", type: "Light Truck", capacity: 750, cost: 550000 },
+  { model: "Mahindra Bolero Pickup", type: "Light Truck", capacity: 1500, cost: 850000 },
+  { model: "Scania R 500", type: "Heavy Truck", capacity: 40000, cost: 7500000 },
+  { model: "Force Traveller", type: "Passenger Van", capacity: 3000, cost: 1500000 },
 ];
 
-const tripData: {
-  source: string;
-  destination: string;
-  cargoWeight: number;
-  plannedDistance: number;
-  actualDistance: number;
-  revenue: number;
-  status: TripStatus;
-  finalOdometer: number;
-  dispatchedAt: Date;
-  completedAt: Date;
-} = {
-  source: "Mumbai, Maharashtra",
-  destination: "Pune, Maharashtra",
-  cargoWeight: 18000,
-  plannedDistance: 150,
-  actualDistance: 156,
-  revenue: 45000,
-  status: "COMPLETED",
-  finalOdometer: 89156,
-  dispatchedAt: new Date("2026-07-10T06:00:00Z"),
-  completedAt: new Date("2026-07-10T14:30:00Z"),
+const vehicleStatusPool: VehicleStatus[] = [
+  "AVAILABLE",
+  "AVAILABLE",
+  "AVAILABLE",
+  "AVAILABLE",
+  "AVAILABLE",
+  "ON_TRIP",
+  "ON_TRIP",
+  "IN_SHOP",
+  "IN_SHOP",
+  "RETIRED",
+];
+
+const licenseCategories = ["HMV", "LMV", "MCWG"] as const;
+
+const driverFirstNames = [
+  "Aarav",
+  "Vihaan",
+  "Aditya",
+  "Kabir",
+  "Reyansh",
+  "Ishaan",
+  "Arjun",
+  "Rohan",
+  "Kunal",
+  "Suresh",
+  "Ramesh",
+  "Vikram",
+  "Rahul",
+  "Manoj",
+  "Sandeep",
+  "Deepak",
+  "Ankit",
+  "Yash",
+  "Nikhil",
+  "Amit",
+  "Shivam",
+  "Piyush",
+  "Anand",
+  "Rakesh",
+  "Naveen",
+];
+
+const driverLastNames = [
+  "Sharma",
+  "Verma",
+  "Yadav",
+  "Patil",
+  "Reddy",
+  "Iyer",
+  "Menon",
+  "Nair",
+  "Gupta",
+  "Singh",
+  "Chauhan",
+  "Kumar",
+  "Bansal",
+  "Chopra",
+  "Kapoor",
+  "Bhandari",
+  "Bhattacharya",
+  "Rathore",
+  "Deshmukh",
+  "Pillai",
+];
+
+const driverStatusPool: DriverStatus[] = [
+  "AVAILABLE",
+  "AVAILABLE",
+  "AVAILABLE",
+  "AVAILABLE",
+  "AVAILABLE",
+  "AVAILABLE",
+  "ON_TRIP",
+  "OFF_DUTY",
+  "SUSPENDED",
+];
+
+const citiesByRegion: Record<string, string[]> = {
+  Maharashtra: ["Mumbai", "Pune", "Nagpur", "Nashik"],
+  Karnataka: ["Bengaluru", "Mysuru", "Mangaluru"],
+  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai"],
+  Gujarat: ["Ahmedabad", "Surat", "Vadodara"],
+  Delhi: ["New Delhi", "Dwarka", "Rohini"],
+  Rajasthan: ["Jaipur", "Udaipur", "Jodhpur"],
+  Kerala: ["Kochi", "Thiruvananthapuram", "Kozhikode"],
+  Telangana: ["Hyderabad", "Warangal"],
+  "West Bengal": ["Kolkata", "Siliguri"],
+  Punjab: ["Ludhiana", "Amritsar", "Chandigarh"],
 };
 
-const maintenanceData: {
-  description: string;
-  cost: number;
-  status: MaintenanceStatus;
-  startedAt: Date;
-} = {
-  description: "Engine oil change, brake pad replacement, tire rotation",
-  cost: 28500,
-  status: "OPEN",
-  startedAt: new Date("2026-07-11"),
-};
-
-const fuelLogData = {
-  liters: 85,
-  cost: 8925,
-  logDate: new Date("2026-07-10"),
-};
-
-const expenseData: Array<{ category: ExpenseCategory; amount: number; expenseDate: Date; description: string }> = [
-  {
-    category: "TOLL",
-    amount: 2500,
-    expenseDate: new Date("2026-07-10"),
-    description: "Mumbai-Pune toll charges",
-  },
-  {
-    category: "MAINTENANCE",
-    amount: 28500,
-    expenseDate: new Date("2026-07-11"),
-    description: "Workshop maintenance charges",
-  },
+const expenseCategories: ExpenseCategory[] = [
+  "TOLL",
+  "PERMIT",
+  "INSURANCE",
+  "FINE",
+  "PARKING",
+  "MAINTENANCE",
+  "OTHER",
 ];
 
+// ---------------------------------------------------------------------------
+// Generators
+// ---------------------------------------------------------------------------
+function pad(value: number, size: number): string {
+  return value.toString().padStart(size, "0");
+}
+
+function generateVehicles(count: number) {
+  const items: Array<{
+    registrationNumber: string;
+    model: string;
+    type: string;
+    maxLoadCapacity: number;
+    odometer: number;
+    acquisitionCost: number;
+    status: VehicleStatus;
+    region: string;
+  }> = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const regionIndex = index % regions.length;
+    const region = regions[regionIndex];
+    const stateCode = stateCodes[regionIndex];
+    const modelSpec = rng.pick(vehicleModels);
+    const registrationNumber = `${stateCode}${pad(rng.int(10, 99), 2)}${String.fromCharCode(
+      65 + rng.int(0, 25),
+    )}${String.fromCharCode(65 + rng.int(0, 25))}${pad(index + 1000, 4)}`;
+
+    items.push({
+      registrationNumber,
+      model: modelSpec.model,
+      type: modelSpec.type,
+      maxLoadCapacity: modelSpec.capacity,
+      odometer: rng.int(10000, 250000),
+      acquisitionCost: modelSpec.cost,
+      status: vehicleStatusPool[index % vehicleStatusPool.length],
+      region,
+    });
+  }
+
+  return items;
+}
+
+function generateDrivers(count: number) {
+  const usedLicenses = new Set<string>();
+  const items: Array<{
+    fullName: string;
+    licenseNumber: string;
+    licenseCategory: string;
+    licenseExpiry: Date;
+    contactNumber: string;
+    safetyScore: number;
+    status: DriverStatus;
+  }> = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const firstName = rng.pick(driverFirstNames);
+    const lastName = rng.pick(driverLastNames);
+    let licenseNumber = "";
+
+    do {
+      const stateCode = stateCodes[index % stateCodes.length];
+      licenseNumber = `${stateCode}${pad(rng.int(10, 99), 2)}${pad(2018 + rng.int(0, 6), 4)}${pad(index * 7 + rng.int(1, 999), 7)}`;
+    } while (usedLicenses.has(licenseNumber));
+    usedLicenses.add(licenseNumber);
+
+    const expiryYear = 2026 + rng.int(0, 4);
+    const expiryMonth = rng.int(1, 12);
+    const expiryDay = rng.int(1, 28);
+
+    items.push({
+      fullName: `${firstName} ${lastName}`,
+      licenseNumber,
+      licenseCategory: rng.pick(licenseCategories),
+      licenseExpiry: new Date(`${expiryYear}-${pad(expiryMonth, 2)}-${pad(expiryDay, 2)}`),
+      contactNumber: `+9198${pad(rng.int(10000000, 99999999), 8)}`,
+      safetyScore: rng.int(60, 100),
+      status: driverStatusPool[index % driverStatusPool.length],
+    });
+  }
+
+  return items;
+}
+
+function pickCityPair() {
+  const region = rng.pick(regions);
+  const cities = citiesByRegion[region];
+  const source = rng.pick(cities);
+  let destination = rng.pick(cities);
+  while (cities.length > 1 && destination === source) {
+    destination = rng.pick(cities);
+  }
+  return { region, source: `${source}, ${region}`, destination: `${destination}, ${region}` };
+}
+
+// ---------------------------------------------------------------------------
+// Main seed
+// ---------------------------------------------------------------------------
 async function main() {
-  console.log("Starting seed...");
+  console.log("Starting TransitOps seed...");
+
+  console.log("Clearing previous demo data...");
+  await prisma.expense.deleteMany();
+  await prisma.fuelLog.deleteMany();
+  await prisma.maintenanceLog.deleteMany();
+  await prisma.trip.deleteMany();
+  await prisma.driver.deleteMany();
+  await prisma.vehicle.deleteMany();
 
   const roleRecords = new Map<RoleName, string>();
   for (const role of roles) {
@@ -193,7 +334,7 @@ async function main() {
     });
     roleRecords.set(record.name, record.id);
   }
-  console.log(`Created or updated ${roles.length} roles.`);
+  console.log(`Roles: ${roles.length}`);
 
   const adminEmail = process.env.SUPER_ADMIN_EMAIL ?? "admin@transitops.dev";
   const adminPassword = process.env.SUPER_ADMIN_PASSWORD ?? "password123";
@@ -201,9 +342,7 @@ async function main() {
   const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
 
   const superAdminRoleId = roleRecords.get("SUPER_ADMIN");
-  if (!superAdminRoleId) {
-    throw new Error("SUPER_ADMIN role not found");
-  }
+  if (!superAdminRoleId) throw new Error("SUPER_ADMIN role not found");
 
   await prisma.user.upsert({
     where: { email: adminEmail },
@@ -221,33 +360,30 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`Created or updated super admin: ${adminEmail}`);
 
   await prisma.appSetting.upsert({
     where: { scope: "GLOBAL" },
     update: {
-      depotName: "Gandhinagar Depot City",
+      depotName: "TransitOps Central Depot",
       currency: "INR",
       distanceUnit: "kilometers",
     },
     create: {
       scope: "GLOBAL",
-      depotName: "Gandhinagar Depot City",
+      depotName: "TransitOps Central Depot",
       currency: "INR",
       distanceUnit: "kilometers",
     },
   });
-  console.log("Created or updated app settings.");
 
   const demoPassword = "demo123";
   const hashedDemoPassword = await bcrypt.hash(demoPassword, 10);
   const userRecords = new Map<string, string>();
+  userRecords.set(adminEmail, (await prisma.user.findUnique({ where: { email: adminEmail } }))!.id);
 
   for (const user of demoUsers) {
     const roleId = roleRecords.get(user.role);
-    if (!roleId) {
-      throw new Error(`Role ${user.role} not found`);
-    }
+    if (!roleId) throw new Error(`Role ${user.role} not found`);
 
     const record = await prisma.user.upsert({
       where: { email: user.email },
@@ -264,211 +400,168 @@ async function main() {
         roleId,
         isActive: true,
       },
+      select: { id: true },
     });
     userRecords.set(user.email, record.id);
   }
-  console.log(`Created or updated ${demoUsers.length} demo users.`);
+  console.log(`Users: ${demoUsers.length + 1}`);
 
-  const vehicleRecords = new Map<string, string>();
-  for (const vehicle of vehicles) {
-    const record = await prisma.vehicle.upsert({
-      where: { registrationNumber: vehicle.registrationNumber },
-      update: {
-        model: vehicle.model,
-        type: vehicle.type,
-        maxLoadCapacity: vehicle.maxLoadCapacity,
-        odometer: vehicle.odometer,
-        acquisitionCost: vehicle.acquisitionCost,
-        status: vehicle.status,
-        region: vehicle.region,
-      },
-      create: {
-        registrationNumber: vehicle.registrationNumber,
-        model: vehicle.model,
-        type: vehicle.type,
-        maxLoadCapacity: vehicle.maxLoadCapacity,
-        odometer: vehicle.odometer,
-        acquisitionCost: vehicle.acquisitionCost,
-        status: vehicle.status,
-        region: vehicle.region,
-      },
+  const vehicleSpecs = generateVehicles(100);
+  const vehicleIds: string[] = [];
+  for (const vehicle of vehicleSpecs) {
+    const record = await prisma.vehicle.create({
+      data: vehicle,
+      select: { id: true },
     });
-    vehicleRecords.set(vehicle.registrationNumber, record.id);
+    vehicleIds.push(record.id);
   }
-  console.log(`Created or updated ${vehicles.length} vehicles.`);
+  console.log(`Vehicles: ${vehicleSpecs.length}`);
 
-  const driverRecords = new Map<string, string>();
-  for (const driver of drivers) {
-    const record = await prisma.driver.upsert({
-      where: { licenseNumber: driver.licenseNumber },
-      update: {
-        fullName: driver.fullName,
-        licenseCategory: driver.licenseCategory,
-        licenseExpiry: driver.licenseExpiry,
-        contactNumber: driver.contactNumber,
-        safetyScore: driver.safetyScore,
-        status: driver.status,
-      },
-      create: {
-        fullName: driver.fullName,
-        licenseNumber: driver.licenseNumber,
-        licenseCategory: driver.licenseCategory,
-        licenseExpiry: driver.licenseExpiry,
-        contactNumber: driver.contactNumber,
-        safetyScore: driver.safetyScore,
-        status: driver.status,
-      },
+  const driverSpecs = generateDrivers(100);
+  const driverIds: string[] = [];
+  for (const driver of driverSpecs) {
+    const record = await prisma.driver.create({
+      data: driver,
+      select: { id: true },
     });
-    driverRecords.set(driver.licenseNumber, record.id);
+    driverIds.push(record.id);
   }
-  console.log(`Created or updated ${drivers.length} drivers.`);
+  console.log(`Drivers: ${driverSpecs.length}`);
 
-  const tripVehicleId = vehicleRecords.get("KA01CD5678");
-  const tripDriverId = driverRecords.get("KA0520200098765");
-  const tripCreatorId = userRecords.get("dispatcher@transitops.dev");
-  if (!tripVehicleId || !tripDriverId || !tripCreatorId) {
-    throw new Error("Missing required records for trip creation");
-  }
+  const dispatcherId = userRecords.get("dispatcher@transitops.dev");
+  if (!dispatcherId) throw new Error("Dispatcher user missing");
 
-  const existingTrip = await prisma.trip.findFirst({
-    where: {
-      vehicleId: tripVehicleId,
-      driverId: tripDriverId,
-      source: tripData.source,
-      destination: tripData.destination,
-      dispatchedAt: tripData.dispatchedAt,
-    },
-    select: { id: true },
-  });
+  const availableVehicleIds = vehicleSpecs
+    .map((vehicle, index) => ({ vehicle, id: vehicleIds[index] }))
+    .filter((item) => item.vehicle.status === "AVAILABLE")
+    .map((item) => item.id);
+  const availableDriverIds = driverSpecs
+    .map((driver, index) => ({ driver, id: driverIds[index] }))
+    .filter((item) => item.driver.status === "AVAILABLE")
+    .map((item) => item.id);
 
-  const tripPayload = {
-    vehicleId: tripVehicleId,
-    driverId: tripDriverId,
-    createdById: tripCreatorId,
-    source: tripData.source,
-    destination: tripData.destination,
-    cargoWeight: tripData.cargoWeight,
-    plannedDistance: tripData.plannedDistance,
-    actualDistance: tripData.actualDistance,
-    revenue: tripData.revenue,
-    status: tripData.status,
-    finalOdometer: tripData.finalOdometer,
-    dispatchedAt: tripData.dispatchedAt,
-    completedAt: tripData.completedAt,
-  };
+  const tripCount = 25;
+  const tripIds: string[] = [];
+  for (let index = 0; index < tripCount; index += 1) {
+    const vehicleId = availableVehicleIds[index % availableVehicleIds.length];
+    const driverId = availableDriverIds[index % availableDriverIds.length];
+    if (!vehicleId || !driverId) continue;
 
-  const trip = existingTrip
-    ? await prisma.trip.update({
-        where: { id: existingTrip.id },
-        data: tripPayload,
-      })
-    : await prisma.trip.create({
-        data: tripPayload,
-      });
-  console.log("Created or updated completed demo trip.");
+    const cityPair = pickCityPair();
+    const planned = rng.int(80, 900);
+    const daysAgo = rng.int(1, 45);
+    const dispatchedAt = new Date();
+    dispatchedAt.setDate(dispatchedAt.getDate() - daysAgo);
+    const completedAt = new Date(dispatchedAt);
+    completedAt.setHours(completedAt.getHours() + rng.int(6, 18));
 
-  const maintenanceVehicleId = vehicleRecords.get("TN09EF9012");
-  if (!maintenanceVehicleId) {
-    throw new Error("Missing vehicle for maintenance log");
-  }
-
-  const existingMaintenance = await prisma.maintenanceLog.findFirst({
-    where: {
-      vehicleId: maintenanceVehicleId,
-      description: maintenanceData.description,
-      startedAt: maintenanceData.startedAt,
-    },
-    select: { id: true },
-  });
-
-  const maintenancePayload = {
-    vehicleId: maintenanceVehicleId,
-    description: maintenanceData.description,
-    cost: maintenanceData.cost,
-    status: maintenanceData.status,
-    startedAt: maintenanceData.startedAt,
-  };
-
-  if (existingMaintenance) {
-    await prisma.maintenanceLog.update({
-      where: { id: existingMaintenance.id },
-      data: maintenancePayload,
-    });
-  } else {
-    await prisma.maintenanceLog.create({
-      data: maintenancePayload,
-    });
-  }
-  console.log("Created or updated maintenance log.");
-
-  const existingFuelLog = await prisma.fuelLog.findFirst({
-    where: {
-      vehicleId: tripVehicleId,
-      tripId: trip.id,
-      logDate: fuelLogData.logDate,
-    },
-    select: { id: true },
-  });
-
-  const fuelLogPayload = {
-    vehicleId: tripVehicleId,
-    tripId: trip.id,
-    liters: fuelLogData.liters,
-    cost: fuelLogData.cost,
-    logDate: fuelLogData.logDate,
-  };
-
-  if (existingFuelLog) {
-    await prisma.fuelLog.update({
-      where: { id: existingFuelLog.id },
-      data: fuelLogPayload,
-    });
-  } else {
-    await prisma.fuelLog.create({
-      data: fuelLogPayload,
-    });
-  }
-  console.log("Created or updated fuel log.");
-
-  for (const expense of expenseData) {
-    const existingExpense = await prisma.expense.findFirst({
-      where: {
-        vehicleId: tripVehicleId,
-        category: expense.category,
-        amount: expense.amount,
-        expenseDate: expense.expenseDate,
+    const trip = await prisma.trip.create({
+      data: {
+        vehicleId,
+        driverId,
+        createdById: dispatcherId,
+        source: cityPair.source,
+        destination: cityPair.destination,
+        cargoWeight: rng.int(500, 20000),
+        plannedDistance: planned,
+        actualDistance: planned + rng.int(-15, 30),
+        revenue: rng.int(20000, 120000),
+        status: "COMPLETED" as TripStatus,
+        finalOdometer: rng.int(20000, 250000),
+        dispatchedAt,
+        completedAt,
       },
       select: { id: true },
     });
-
-    const expensePayload = {
-      vehicleId: tripVehicleId,
-      category: expense.category,
-      amount: expense.amount,
-      expenseDate: expense.expenseDate,
-      description: expense.description,
-    };
-
-    if (existingExpense) {
-      await prisma.expense.update({
-        where: { id: existingExpense.id },
-        data: expensePayload,
-      });
-    } else {
-      await prisma.expense.create({
-        data: expensePayload,
-      });
-    }
+    tripIds.push(trip.id);
   }
-  console.log(`Created or updated ${expenseData.length} expenses.`);
+  console.log(`Trips: ${tripIds.length}`);
 
+  const maintenanceCount = 20;
+  for (let index = 0; index < maintenanceCount; index += 1) {
+    const vehicleId = vehicleIds[rng.int(0, vehicleIds.length - 1)];
+    const startedAt = new Date();
+    startedAt.setDate(startedAt.getDate() - rng.int(1, 90));
+    const status: MaintenanceStatus = rng.int(0, 1) === 0 ? "OPEN" : "CLOSED";
+
+    await prisma.maintenanceLog.create({
+      data: {
+        vehicleId,
+        description: rng.pick([
+          "Engine oil change",
+          "Brake pad replacement",
+          "Tire rotation and balancing",
+          "Coolant flush and refill",
+          "Battery replacement",
+          "Suspension inspection",
+          "Air filter replacement",
+          "Transmission service",
+        ]),
+        cost: rng.int(2500, 45000),
+        status,
+        startedAt,
+        completedAt: status === "CLOSED" ? new Date(startedAt.getTime() + 86400000) : null,
+      },
+    });
+  }
+  console.log(`Maintenance logs: ${maintenanceCount}`);
+
+  const fuelCount = 40;
+  for (let index = 0; index < fuelCount; index += 1) {
+    const vehicleId = vehicleIds[rng.int(0, vehicleIds.length - 1)];
+    const tripId = tripIds.length ? rng.pick(tripIds) : null;
+    const logDate = new Date();
+    logDate.setDate(logDate.getDate() - rng.int(1, 60));
+
+    await prisma.fuelLog.create({
+      data: {
+        vehicleId,
+        tripId,
+        liters: rng.int(40, 220),
+        cost: rng.int(4000, 22000),
+        logDate,
+      },
+    });
+  }
+  console.log(`Fuel logs: ${fuelCount}`);
+
+  const expenseCount = 50;
+  for (let index = 0; index < expenseCount; index += 1) {
+    const vehicleId = vehicleIds[rng.int(0, vehicleIds.length - 1)];
+    const expenseDate = new Date();
+    expenseDate.setDate(expenseDate.getDate() - rng.int(1, 60));
+
+    await prisma.expense.create({
+      data: {
+        vehicleId,
+        category: rng.pick(expenseCategories),
+        amount: rng.int(300, 12000),
+        expenseDate,
+        description: rng.pick([
+          "Toll booth on NH-48",
+          "State permit renewal",
+          "Insurance premium",
+          "Traffic fine",
+          "Parking fee",
+          "Roadside assistance",
+          "Miscellaneous operational cost",
+        ]),
+      },
+    });
+  }
+  console.log(`Expenses: ${expenseCount}`);
+
+  console.log("");
   console.log("Seed complete.");
+  console.log("--------------------------------------------------");
   console.log("Demo credentials:");
-  console.log(`Super Admin: ${adminEmail} / ${adminPassword}`);
-  console.log(`Fleet Manager: fleet@transitops.dev / ${demoPassword}`);
-  console.log(`Safety Officer: safety@transitops.dev / ${demoPassword}`);
-  console.log(`Financial Analyst: finance@transitops.dev / ${demoPassword}`);
-  console.log(`Dispatcher: dispatcher@transitops.dev / ${demoPassword}`);
+  console.log(`  Super Admin:       ${adminEmail} / ${adminPassword}`);
+  console.log(`  Fleet Manager:     fleet@transitops.dev / ${demoPassword}`);
+  console.log(`  Dispatcher:        dispatcher@transitops.dev / ${demoPassword}`);
+  console.log(`  Safety Officer:    safety@transitops.dev / ${demoPassword}`);
+  console.log(`  Financial Analyst: finance@transitops.dev / ${demoPassword}`);
+  console.log(`  Driver:            driver@transitops.dev / ${demoPassword}`);
+  console.log("--------------------------------------------------");
 }
 
 main()
