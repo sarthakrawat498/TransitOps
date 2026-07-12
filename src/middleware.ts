@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/constants";
 
-const PUBLIC_ROUTES = ["/login", "/signup"];
+const PUBLIC_ROUTES = ["/login"];
 const PROTECTED_PREFIX = "/dashboard";
 
 export function middleware(request: NextRequest) {
@@ -27,5 +27,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/signup"],
+  matcher: ["/dashboard/:path*", "/login"],
 };
